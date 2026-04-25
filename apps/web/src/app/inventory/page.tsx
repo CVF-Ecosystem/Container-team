@@ -335,8 +335,13 @@ export default function InventoryPage() {
         )}
       </div>
 
-      {/* Summary cards */}
-      {summary && (
+      {/* Summary cards + Daily movement table — only shown when there is daily data */}
+      {isLoading && (
+        <div className="p-6 text-center text-[var(--color-text-muted)] text-sm">Đang tải...</div>
+      )}
+      {!isLoading && inventoryData.length > 0 && (
+        <>
+        {summary && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className={`cvf-card rounded-xl p-4 text-center ${getCapacityBadge(summary.capacityPercent)}`}>
             <p className="text-xs opacity-80 mb-1">Tồn Hiện Tại</p>
@@ -362,23 +367,14 @@ export default function InventoryPage() {
             <p className="text-2xl font-bold text-[var(--color-info)]">{settings?.capacity.toLocaleString() || 0}</p>
           </div>
         </div>
-      )}
+        )}
 
-      {/* Daily movement table */}
-      <div className="cvf-card rounded-xl overflow-hidden">
-        <div className="px-4 pt-4 pb-1 border-b border-[var(--color-border)] flex items-center gap-2">
-          <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">Biến Động Hàng Ngày</span>
-          <span className="text-xs text-[var(--color-text-muted)]">(XE + XALAN + Tàu)</span>
-        </div>
-        <div className="overflow-x-auto">
-          {isLoading ? (
-            <div className="p-10 text-center text-[var(--color-text-muted)] text-sm">Đang tải dữ liệu...</div>
-          ) : inventoryData.length === 0 ? (
-            <div className="p-8 text-center text-[var(--color-text-muted)] text-sm">
-              Chưa có dữ liệu biến động tháng {selectedMonth}/{selectedYear}
-              <div className="text-xs mt-1 opacity-60">Upload file số liệu ngày từ Admin → Dữ liệu hệ thống</div>
-            </div>
-          ) : (
+        <div className="cvf-card rounded-xl overflow-hidden">
+          <div className="px-4 pt-4 pb-1 border-b border-[var(--color-border)] flex items-center gap-2">
+            <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">Biến Động Hàng Ngày</span>
+            <span className="text-xs text-[var(--color-text-muted)]">(XE + XALAN + Tàu)</span>
+          </div>
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--color-border)] bg-[var(--color-elevated)]/40">
@@ -423,9 +419,10 @@ export default function InventoryPage() {
                 ))}
               </tbody>
             </table>
-          )}
+          </div>
         </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }
