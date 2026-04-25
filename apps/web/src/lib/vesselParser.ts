@@ -58,8 +58,8 @@ function parseDateFromCell(cell: XLSX.CellObject | undefined): { day: number; mo
   };
 }
 
-function getCell(sheet: XLSX.WorkSheet, r: number, c: number): XLSX.CellObject | undefined {
-  return sheet[XLSX.utils.encode_cell({ r, c })];
+function getCell(sheet: XLSX.WorkSheet, rowIndex: number, colIndex: number): XLSX.CellObject | undefined {
+  return sheet[XLSX.utils.encode_cell({ r: rowIndex, c: colIndex })];
 }
 
 function str(sheet: XLSX.WorkSheet, r: number, c: number): string {

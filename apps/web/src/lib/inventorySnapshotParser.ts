@@ -1,8 +1,8 @@
 import * as XLSX from "@e965/xlsx";
 import { db, InventorySnapshot } from "./db";
 
-function getCell(sheet: XLSX.WorkSheet, r: number, c: number): XLSX.CellObject | undefined {
-  return sheet[XLSX.utils.encode_cell({ r, c })];
+function getCell(sheet: XLSX.WorkSheet, rowIndex: number, colIndex: number): XLSX.CellObject | undefined {
+  return sheet[XLSX.utils.encode_cell({ r: rowIndex, c: colIndex })];
 }
 
 function str(sheet: XLSX.WorkSheet, r: number, c: number): string {
