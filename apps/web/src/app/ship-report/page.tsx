@@ -772,7 +772,7 @@ export default function ShipReportPage() {
                 onClick={handleSave}
                 className="px-6 py-2 rounded-lg text-sm font-bold text-white bg-[var(--color-accent)] hover:opacity-85 transition-opacity"
               >
-                Lưu Báo Cáo
+                Lưu
               </button>
             </div>
           </div>

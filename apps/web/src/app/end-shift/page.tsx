@@ -258,7 +258,7 @@ export default function EndShiftReportPage() {
           className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--color-accent)] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-950/30 transition-colors hover:bg-[var(--color-accent-hover)] disabled:cursor-not-allowed disabled:bg-[var(--color-elevated)] disabled:opacity-50"
         >
           <Save className="h-4 w-4" aria-hidden="true" />
-          Lưu báo cáo cuối ca
+          Lưu
         </button>
         {!selectedReporterId && (
           <p className="mt-2 text-right text-xs text-[var(--color-text-muted)]">

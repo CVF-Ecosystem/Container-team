@@ -148,7 +148,6 @@ export default function StartShiftReportPage() {
                         selectedIds={captainId}
                         onChange={setCaptainId}
                         placeholder="Chọn"
-                        description="chọn 1 người"
                         mode="single"
                     />
                     <EmployeeSelector
@@ -157,7 +156,6 @@ export default function StartShiftReportPage() {
                         selectedIds={viceCaptainId}
                         onChange={setViceCaptainId}
                         placeholder="Chọn"
-                        description="chọn 1 người"
                         mode="single"
                     />
                     <EmployeeSelector
@@ -166,7 +164,6 @@ export default function StartShiftReportPage() {
                         selectedIds={yardManagerId}
                         onChange={setYardManagerId}
                         placeholder="Chọn"
-                        description="chọn 1 người"
                         mode="single"
                     />
                 </div>
@@ -283,7 +280,7 @@ export default function StartShiftReportPage() {
                     className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--color-accent)] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-950/30 transition-colors hover:bg-[var(--color-accent-hover)]"
                 >
                     <Save className="h-4 w-4" aria-hidden="true" />
-                    Lưu báo cáo đầu ca
+                    Lưu
                 </button>
             </div>
         </div>

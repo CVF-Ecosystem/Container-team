@@ -239,7 +239,7 @@ export default function ReportForm() {
                                     Đang lưu...
                                 </span>
                             ) : (
-                                '💾 Lưu Báo Cáo'
+                                'Lưu'
                             )}
                         </button>
                     </div>
