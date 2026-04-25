@@ -1,12 +1,11 @@
 /**
  * Vessel Excel Parser
- * Parse file Excel dữ liệu tàu
  *
- * Format file:
- * Row 1: Header title
- * Row 2: Empty
- * Row 3: Column headers (STT, Ngày, Tên tàu, ATB, ATD, Nhập tàu, Xuất tàu, Shift In, Shift Out)
- * Row 4+: Data
+ * Hỗ trợ 2 format:
+ * A) File gốc của cảng (Tau 2025.xlsx) — multi-level header, 61 cột
+ *    Row 2 (0-indexed): Vessel, ATB, ATD, LINE ở cols 3,6,9,17
+ *    Row 7+: data, date lấy từ ATB col 6, nhap=col24, xuat=col32, shiftIn=col42, shiftOut=col50
+ * B) Template app — single header row với STT/Ngày/Tên tàu/ATB/ATD/Nhập/Xuất/ShiftIn/ShiftOut
  */
 
 import * as XLSX from "@e965/xlsx";
@@ -27,143 +26,155 @@ export interface ParsedVesselData {
   shift_out: number;
 }
 
+// Parse "dd/mm/yyyy HH:MM" hoặc "dd/mm/yyyy" hoặc Excel date number
+function parseDateFromCell(cell: XLSX.CellObject | undefined): { day: number; month: number; year: number; date: string } | null {
+  if (!cell) return null;
+
+  let day = 0, month = 0, year = 0;
+
+  if (typeof cell.v === "number") {
+    const d = XLSX.SSF.parse_date_code(cell.v);
+    day = d.d; month = d.m; year = d.y;
+  } else {
+    const str = String(cell.v || "");
+    // Matches dd/mm/yyyy or dd-mm-yyyy (time part optional)
+    const m = str.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (!m) return null;
+    day = parseInt(m[1], 10);
+    month = parseInt(m[2], 10);
+    year = parseInt(m[3], 10);
+  }
+
+  if (!day || !month || !year) return null;
+  return {
+    day, month, year,
+    date: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+  };
+}
+
+function getCell(sheet: XLSX.WorkSheet, r: number, c: number): XLSX.CellObject | undefined {
+  return sheet[XLSX.utils.encode_cell({ r, c })];
+}
+
+function str(sheet: XLSX.WorkSheet, r: number, c: number): string {
+  const cell = getCell(sheet, r, c);
+  return cell ? String(cell.v ?? "").trim() : "";
+}
+
+function num(sheet: XLSX.WorkSheet, r: number, c: number): number {
+  const cell = getCell(sheet, r, c);
+  if (!cell) return 0;
+  const v = typeof cell.v === "number" ? cell.v : parseFloat(String(cell.v).replace(/,/g, ""));
+  return isNaN(v) ? 0 : v;
+}
+
 /**
- * Parse file Excel tàu
+ * Format A — File gốc của cảng (Tau 2025.xlsx, 61 cột)
+ * Nhận dạng: range.e.c >= 30 VÀ row 2 col 6 = "ATB"
+ * Date từ ATB (col 6), aggregate nhiều tàu/ngày thành 1 record.
+ */
+function parsePortNativeFormat(sheet: XLSX.WorkSheet, range: XLSX.Range): ParsedVesselData[] {
+  // Confirmed column indices from file analysis:
+  const COL = { ATB: 6, ATD: 9, VESSEL: 3, LINE: 17,
+    NHAP: 24, XUAT: 32, SHIFT_IN: 42, SHIFT_OUT: 50 };
+
+  // Aggregate per date: nhiều tàu cùng ngày → cộng dồn
+  const byDate = new Map<string, ParsedVesselData>();
+
+  for (let r = 7; r <= range.e.r; r++) {          // data bắt đầu từ row index 7
+    const vesselName = str(sheet, r, COL.VESSEL);
+
+    // Bỏ qua header row tháng (col Vessel = "Vessel" hoặc rỗng)
+    if (!vesselName || vesselName === "Vessel" || vesselName === "TỔNG LŨY TIẾN NĂM 2025") continue;
+
+    const dateInfo = parseDateFromCell(getCell(sheet, r, COL.ATB));
+    if (!dateInfo) continue;
+
+    const nhap_tau  = num(sheet, r, COL.NHAP);
+    const xuat_tau  = num(sheet, r, COL.XUAT);
+    const shift_in  = num(sheet, r, COL.SHIFT_IN);
+    const shift_out = num(sheet, r, COL.SHIFT_OUT);
+    if (nhap_tau === 0 && xuat_tau === 0 && shift_in === 0 && shift_out === 0) continue;
+
+    const existing = byDate.get(dateInfo.date);
+    if (existing) {
+      existing.nhap_tau  += nhap_tau;
+      existing.xuat_tau  += xuat_tau;
+      existing.shift_in  += shift_in;
+      existing.shift_out += shift_out;
+      // vessel_name: danh sách tàu trong ngày
+      existing.vessel_name = [existing.vessel_name, vesselName].filter(Boolean).join(", ");
+    } else {
+      byDate.set(dateInfo.date, {
+        ...dateInfo,
+        vessel_name: vesselName,
+        atb: str(sheet, r, COL.ATB) || undefined,
+        atd: str(sheet, r, COL.ATD) || undefined,
+        nhap_tau, xuat_tau, shift_in, shift_out,
+      });
+    }
+  }
+
+  return Array.from(byDate.values());
+}
+
+/**
+ * Format B — Template app (STT | Ngày | Tên tàu | ATB | ATD | Nhập | Xuất | ShiftIn | ShiftOut)
+ */
+function parseTemplateFormat(sheet: XLSX.WorkSheet, range: XLSX.Range): ParsedVesselData[] {
+  const data: ParsedVesselData[] = [];
+
+  // Find header row: tìm dòng có "stt" hoặc "ngày" ở cột 0
+  let headerRow = 0;
+  for (let r = 0; r <= Math.min(5, range.e.r); r++) {
+    const text = str(sheet, r, 0).toLowerCase();
+    if (text.includes("stt") || text.includes("ngày") || text.includes("ngay")) {
+      headerRow = r;
+      break;
+    }
+  }
+
+  const hasStt = str(sheet, headerRow, 0).toLowerCase().includes("stt");
+  const dateCol = hasStt ? 1 : 0;
+
+  for (let r = headerRow + 1; r <= range.e.r; r++) {
+    const dateInfo = parseDateFromCell(getCell(sheet, r, dateCol));
+    if (!dateInfo) continue;
+
+    const nhap_tau  = num(sheet, r, dateCol + 4);
+    const xuat_tau  = num(sheet, r, dateCol + 5);
+    const shift_in  = num(sheet, r, dateCol + 6);
+    const shift_out = num(sheet, r, dateCol + 7);
+    if (nhap_tau === 0 && xuat_tau === 0 && shift_in === 0 && shift_out === 0) continue;
+
+    data.push({
+      ...dateInfo,
+      stt:         hasStt ? num(sheet, r, 0) : undefined,
+      vessel_name: str(sheet, r, dateCol + 1) || undefined,
+      atb:         str(sheet, r, dateCol + 2) || undefined,
+      atd:         str(sheet, r, dateCol + 3) || undefined,
+      nhap_tau, xuat_tau, shift_in, shift_out,
+    });
+  }
+
+  return data;
+}
+
+/**
+ * Parse file Excel tàu — tự nhận dạng format
  */
 export function parseVesselExcel(workbook: XLSX.WorkBook): ParsedVesselData[] {
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   if (!sheet) return [];
 
   const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
-  const data: ParsedVesselData[] = [];
 
-  const getValue = (row: number, col: number): number => {
-    const cell = sheet[XLSX.utils.encode_cell({ r: row, c: col })];
-    if (!cell) return 0;
-    const val =
-      typeof cell.v === "number"
-        ? cell.v
-        : parseFloat(String(cell.v).replace(/,/g, ""));
-    return isNaN(val) ? 0 : val;
-  };
+  // Nhận dạng format: file gốc cảng có >= 30 cột VÀ col 6 row 2 = "ATB"
+  const isPortNative = range.e.c >= 30 && str(sheet, 2, 6) === "ATB";
 
-  const getStringValue = (row: number, col: number): string => {
-    const cell = sheet[XLSX.utils.encode_cell({ r: row, c: col })];
-    if (!cell) return "";
-    return String(cell.v || "").trim();
-  };
-
-  const getDateValue = (
-    row: number,
-    col: number
-  ): { day: number; month: number; year: number; date: string } | null => {
-    const cell = sheet[XLSX.utils.encode_cell({ r: row, c: col })];
-    if (!cell) return null;
-
-    let dateStr = "";
-    let day = 0,
-      month = 0,
-      year = 0;
-
-    // Handle Excel date number
-    if (typeof cell.v === "number") {
-      const excelDate = XLSX.SSF.parse_date_code(cell.v);
-      day = excelDate.d;
-      month = excelDate.m;
-      year = excelDate.y;
-      dateStr = `${year}-${String(month).padStart(2, "0")}-${String(
-        day
-      ).padStart(2, "0")}`;
-    } else {
-      // Handle string date (dd/mm/yyyy or dd-mm-yyyy)
-      const str = String(cell.v || "");
-      const match = str.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-      if (match) {
-        day = parseInt(match[1], 10);
-        month = parseInt(match[2], 10);
-        year = parseInt(match[3], 10);
-        dateStr = `${year}-${String(month).padStart(2, "0")}-${String(
-          day
-        ).padStart(2, "0")}`;
-      }
-    }
-
-    if (!dateStr) return null;
-    return { day, month, year, date: dateStr };
-  };
-
-  // Find header row: search rows 0-10, match by keyword count across all columns
-  const headerKeywords = ["stt", "ngày", "ngay", "date", "vessel", "tàu", "tau",
-    "atb", "atd", "nhập", "nhap", "xuất", "xuat", "shift", "discharge", "loading"];
-
-  let headerRow = 2;
-  for (let r = 0; r <= Math.min(10, range.e.r); r++) {
-    let hits = 0;
-    for (let c = 0; c <= Math.min(20, range.e.c); c++) {
-      const cell = sheet[XLSX.utils.encode_cell({ r, c })];
-      const text = String(cell?.v || "").toLowerCase().trim();
-      if (headerKeywords.some((kw) => text.includes(kw))) hits++;
-    }
-    if (hits >= 2) { headerRow = r; break; }
-  }
-
-  // Map columns dynamically by header text
-  const cols: Record<string, number> = {};
-  for (let c = 0; c <= Math.min(30, range.e.c); c++) {
-    const text = getStringValue(headerRow, c).toLowerCase().trim();
-    if (!text) continue;
-    if (text === "stt" || text === "no" || text === "seq") cols.stt = c;
-    else if (text.includes("ngày") || text.includes("ngay") || text === "date") cols.date = c;
-    else if (text.includes("vessel") || text.includes("tên tàu") || text.includes("ten tau") || text === "tàu" || text === "tau") cols.vessel = c;
-    else if (text === "atb") cols.atb = c;
-    else if (text === "atd") cols.atd = c;
-    else if ((text.includes("nhập") || text.includes("nhap") || text.includes("discharge")) && !cols.nhap) cols.nhap = c;
-    else if ((text.includes("xuất") || text.includes("xuat") || text.includes("loading") || text.includes("unload")) && !cols.xuat) cols.xuat = c;
-    else if (text.includes("shift") && (text.includes("in") || text.includes("nhập") || text.includes("nhap"))) cols.shift_in = c;
-    else if (text.includes("shift") && (text.includes("out") || text.includes("xuất") || text.includes("xuat"))) cols.shift_out = c;
-  }
-
-  // Fallback: if dynamic mapping found nothing, use fixed offsets from old logic
-  if (cols.date === undefined) {
-    const hasStt = getStringValue(headerRow, 0).toLowerCase().includes("stt");
-    cols.date = hasStt ? 1 : 0;
-    if (hasStt) cols.stt = 0;
-    cols.vessel  = (cols.date) + 1;
-    cols.atb     = (cols.date) + 2;
-    cols.atd     = (cols.date) + 3;
-    cols.nhap    = (cols.date) + 4;
-    cols.xuat    = (cols.date) + 5;
-    cols.shift_in  = (cols.date) + 6;
-    cols.shift_out = (cols.date) + 7;
-  }
-
-  // Parse data rows
-  for (let r = headerRow + 1; r <= range.e.r; r++) {
-    const dateInfo = getDateValue(r, cols.date ?? 1);
-    if (!dateInfo) continue;
-
-    const nhap_tau  = cols.nhap     !== undefined ? getValue(r, cols.nhap)     : 0;
-    const xuat_tau  = cols.xuat     !== undefined ? getValue(r, cols.xuat)     : 0;
-    const shift_in  = cols.shift_in  !== undefined ? getValue(r, cols.shift_in)  : 0;
-    const shift_out = cols.shift_out !== undefined ? getValue(r, cols.shift_out) : 0;
-
-    // Skip empty rows
-    if (nhap_tau === 0 && xuat_tau === 0 && shift_in === 0 && shift_out === 0) continue;
-
-    data.push({
-      ...dateInfo,
-      stt:         cols.stt    !== undefined ? getValue(r, cols.stt) : undefined,
-      vessel_name: cols.vessel !== undefined ? getStringValue(r, cols.vessel) || undefined : undefined,
-      atb:         cols.atb    !== undefined ? getStringValue(r, cols.atb)    || undefined : undefined,
-      atd:         cols.atd    !== undefined ? getStringValue(r, cols.atd)    || undefined : undefined,
-      nhap_tau,
-      xuat_tau,
-      shift_in,
-      shift_out,
-    });
-  }
-
-  return data;
+  return isPortNative
+    ? parsePortNativeFormat(sheet, range)
+    : parseTemplateFormat(sheet, range);
 }
 
 /**
