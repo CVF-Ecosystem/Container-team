@@ -7,6 +7,8 @@ import { DashboardData } from '@/types';
 import { useDbStatus, useAvailableYears, useSyncStatus, useSyncQueue } from '@/lib/hooks';
 import { logger } from '@/lib/logger';
 import { clearYearData } from '@/lib/dataService';
+import { db } from '@/lib/db';
+import { Package, Ship } from 'lucide-react';
 import {
     downloadJSONBackup,
     downloadExcelBackup,
@@ -46,6 +48,10 @@ export default function AdminDataPage() {
     const [isSyncRetrying, setIsSyncRetrying] = useState(false);
     const [isClearingQueue, setIsClearingQueue] = useState(false);
     const [clearingYear, setClearingYear] = useState<number | null>(null);
+    const [vesselCount, setVesselCount] = useState<number | null>(null);
+    const [isClearingVessels, setIsClearingVessels] = useState(false);
+    const [snapshotCount, setSnapshotCount] = useState<number | null>(null);
+    const [isClearingSnapshots, setIsClearingSnapshots] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -207,6 +213,50 @@ export default function AdminDataPage() {
         }
     };
 
+    const loadVesselCount = async () => {
+        const count = await db.vessel_data.count();
+        setVesselCount(count);
+    };
+
+    const loadSnapshotCount = async () => {
+        const count = await db.inventory_snapshots.count();
+        setSnapshotCount(count);
+    };
+
+    useEffect(() => { void loadVesselCount(); void loadSnapshotCount(); }, []);
+
+    const handleClearSnapshotData = async () => {
+        const count = await db.inventory_snapshots.count();
+        if (!confirm(`Xóa toàn bộ ${count} bản ghi tồn bãi? Thao tác này không thể hoàn tác.`)) return;
+        setIsClearingSnapshots(true);
+        try {
+            await db.inventory_snapshots.clear();
+            await loadSnapshotCount();
+        } catch (error) {
+            console.error('Error clearing snapshot data:', error);
+            alert('Lỗi xóa dữ liệu tồn bãi');
+        } finally {
+            setIsClearingSnapshots(false);
+        }
+    };
+
+    const handleClearVesselData = async () => {
+        const count = await db.vessel_data.count();
+        if (!confirm(`Xóa toàn bộ ${count} bản ghi dữ liệu tàu? Thao tác này không thể hoàn tác.`)) return;
+        setIsClearingVessels(true);
+        try {
+            await db.vessel_data.clear();
+            await db.vessels.clear();
+            await loadVesselCount();
+            alert('Đã xóa toàn bộ dữ liệu tàu và danh sách tàu.');
+        } catch (error) {
+            console.error('Error clearing vessel data:', error);
+            alert('Lỗi xóa dữ liệu tàu');
+        } finally {
+            setIsClearingVessels(false);
+        }
+    };
+
     return (
         <div className="max-w-4xl mx-auto space-y-6">
 
@@ -306,7 +356,7 @@ export default function AdminDataPage() {
             <div className="cvf-card rounded-xl p-6">
                 <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4 flex items-center gap-2">
                     <Upload className="h-4 w-4 text-[var(--color-accent)]" aria-hidden="true" />
-                    Upload Dữ Liệu Excel
+                    Upload
                 </h2>
                 <p className="text-sm text-[var(--color-text-secondary)] mb-3">
                     Chọn file Excel để import dữ liệu vào hệ thống. Hỗ trợ:
@@ -526,7 +576,7 @@ export default function AdminDataPage() {
                         <div>
                             <h3 className="text-sm font-medium text-[var(--color-text-primary)] flex items-center gap-2">
                                 <RefreshCw className="h-3.5 w-3.5 text-[var(--color-text-muted)]" aria-hidden="true" />
-                                Auto Backup Hàng Tuần
+                                Auto Backup
                             </h3>
                             <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                                 Tự động backup JSON mỗi 7 ngày khi mở Admin page
@@ -537,7 +587,7 @@ export default function AdminDataPage() {
                                 type="checkbox"
                                 checked={autoBackupEnabled}
                                 onChange={handleToggleAutoBackup}
-                                aria-label="Bật/tắt auto backup hàng tuần"
+                                aria-label="Bật/tắt Auto Backup"
                                 className="sr-only peer"
                             />
                             <div className="w-11 h-6 bg-[var(--color-elevated)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-success)]" />
@@ -564,6 +614,68 @@ export default function AdminDataPage() {
                             </div>
                         </div>
                     )}
+                </div>
+            </div>
+
+            {/* Vessel Data Management */}
+            <div className="cvf-card rounded-xl p-6">
+                <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4 flex items-center gap-2">
+                    <Ship className="h-4 w-4 text-[var(--color-warning)]" aria-hidden="true" />
+                    Dữ Liệu Tàu
+                </h2>
+                <div className="flex items-center justify-between p-4 bg-[var(--color-elevated)]/40 rounded-lg border border-[var(--color-border)]">
+                    <div>
+                        <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                            Báo cáo tàu (vessel_data)
+                        </p>
+                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                            {vesselCount === null ? 'Đang đếm...' : `${vesselCount} bản ghi`}
+                            {' — '}import từ trang Báo cáo tàu, xóa để re-import lại từ đầu
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleClearVesselData}
+                        disabled={isClearingVessels || vesselCount === 0}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors bg-[var(--color-danger)]/10 text-[var(--color-danger)] hover:bg-[var(--color-danger)]/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                        {isClearingVessels
+                            ? <RefreshCw className="h-3 w-3 animate-spin" aria-hidden="true" />
+                            : <Trash2 className="h-3 w-3" aria-hidden="true" />
+                        }
+                        Xóa toàn bộ
+                    </button>
+                </div>
+            </div>
+
+            {/* Inventory Snapshot Management */}
+            <div className="cvf-card rounded-xl p-6">
+                <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4 flex items-center gap-2">
+                    <Package className="h-4 w-4 text-[var(--color-info)]" aria-hidden="true" />
+                    Tồn Bãi Container
+                </h2>
+                <div className="flex items-center justify-between p-4 bg-[var(--color-elevated)]/40 rounded-lg border border-[var(--color-border)]">
+                    <div>
+                        <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                            Snapshot tồn bãi (inventory_snapshots)
+                        </p>
+                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                            {snapshotCount === null ? 'Đang đếm...' : `${snapshotCount} bản ghi`}
+                            {' — '}import từ trang Tồn bãi container, xóa để re-import lại
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleClearSnapshotData}
+                        disabled={isClearingSnapshots || snapshotCount === 0}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors bg-[var(--color-danger)]/10 text-[var(--color-danger)] hover:bg-[var(--color-danger)]/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                        {isClearingSnapshots
+                            ? <RefreshCw className="h-3 w-3 animate-spin" aria-hidden="true" />
+                            : <Trash2 className="h-3 w-3" aria-hidden="true" />
+                        }
+                        Xóa toàn bộ
+                    </button>
                 </div>
             </div>
 

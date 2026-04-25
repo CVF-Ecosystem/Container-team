@@ -216,6 +216,26 @@ export default function InventoryPage() {
         )}
       </div>
 
+      {/* Year / Month filter — controls both snapshot and daily table */}
+      <div className="flex flex-wrap items-end gap-4">
+        <div>
+          <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">Năm</label>
+          <select title="Chọn năm" value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="cvf-input w-28 rounded-lg px-3 py-2 text-sm">
+            {(availableYears && availableYears.length > 0 ? availableYears : [getCurrentYear()]).map((year) => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">Tháng</label>
+          <select title="Chọn tháng" value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value))} className="cvf-input w-36 rounded-lg px-3 py-2 text-sm">
+            {Array.from({ length: 12 }, (_, i) => (
+              <option key={i + 1} value={i + 1}>Tháng {i + 1}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {/* TON CU / TON MOI snapshot section */}
       <div className="cvf-card rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
@@ -315,26 +335,6 @@ export default function InventoryPage() {
         )}
       </div>
 
-      {/* Filter row */}
-      <div className="flex flex-wrap items-end gap-4">
-        <div>
-          <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">Năm</label>
-          <select title="Chọn năm" value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="cvf-input w-28 rounded-lg px-3 py-2 text-sm">
-            {(availableYears && availableYears.length > 0 ? availableYears : [getCurrentYear()]).map((year) => (
-              <option key={year} value={year}>{year}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">Tháng</label>
-          <select title="Chọn tháng" value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value))} className="cvf-input w-36 rounded-lg px-3 py-2 text-sm">
-            {Array.from({ length: 12 }, (_, i) => (
-              <option key={i + 1} value={i + 1}>Tháng {i + 1}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
       {/* Summary cards */}
       {summary && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -366,12 +366,17 @@ export default function InventoryPage() {
 
       {/* Daily movement table */}
       <div className="cvf-card rounded-xl overflow-hidden">
+        <div className="px-4 pt-4 pb-1 border-b border-[var(--color-border)] flex items-center gap-2">
+          <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">Biến Động Hàng Ngày</span>
+          <span className="text-xs text-[var(--color-text-muted)]">(XE + XALAN + Tàu)</span>
+        </div>
         <div className="overflow-x-auto">
           {isLoading ? (
             <div className="p-10 text-center text-[var(--color-text-muted)] text-sm">Đang tải dữ liệu...</div>
           ) : inventoryData.length === 0 ? (
-            <div className="p-10 text-center text-[var(--color-text-muted)] text-sm">
-              Không có dữ liệu cho tháng {selectedMonth}/{selectedYear}
+            <div className="p-8 text-center text-[var(--color-text-muted)] text-sm">
+              Chưa có dữ liệu biến động tháng {selectedMonth}/{selectedYear}
+              <div className="text-xs mt-1 opacity-60">Upload file số liệu ngày từ Admin → Dữ liệu hệ thống</div>
             </div>
           ) : (
             <table className="w-full text-sm">
