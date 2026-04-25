@@ -6,6 +6,7 @@
 [build.environment]
   NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
+  NEXT_PUBLIC_ENABLE_LOCAL_AUTH = "true"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
