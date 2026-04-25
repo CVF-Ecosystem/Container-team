@@ -13,6 +13,7 @@ import {
 import {
   importInventorySnapshot,
   getInventorySnapshots,
+  getSnapshotDays,
 } from "@/lib/inventorySnapshotParser";
 
 export default function InventoryPage() {
@@ -24,6 +25,8 @@ export default function InventoryPage() {
 
   const [selectedYear, setSelectedYear] = useState(getCurrentYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedDay, setSelectedDay] = useState(0);
+  const [availableDays, setAvailableDays] = useState<number[]>([]);
 
   const [inventoryData, setInventoryData] = useState<DailyInventory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,13 +66,21 @@ export default function InventoryPage() {
     setIsLoading(false);
   }, [selectedYear, selectedMonth]);
 
-  const loadSnapshots = useCallback(async () => {
-    const s = await getInventorySnapshots(selectedYear, selectedMonth);
-    setSnapshots(s);
+  const loadAvailableDays = useCallback(async () => {
+    const days = await getSnapshotDays(selectedYear, selectedMonth);
+    setAvailableDays(days);
+    setSelectedDay(days.length > 0 ? days[days.length - 1] : 0);
   }, [selectedYear, selectedMonth]);
+
+  const loadSnapshots = useCallback(async () => {
+    if (selectedDay === 0) { setSnapshots({}); return; }
+    const s = await getInventorySnapshots(selectedYear, selectedMonth, selectedDay);
+    setSnapshots(s);
+  }, [selectedYear, selectedMonth, selectedDay]);
 
   useEffect(() => { loadSettings(); }, [loadSettings]);
   useEffect(() => { loadInventory(); }, [loadInventory, settings]);
+  useEffect(() => { loadAvailableDays(); }, [loadAvailableDays]);
   useEffect(() => { loadSnapshots(); }, [loadSnapshots]);
 
   const handleSaveSettings = async () => {
@@ -92,7 +103,7 @@ export default function InventoryPage() {
     setSnapshotMessage("Đang import...");
     const result = await importInventorySnapshot(file, type, date);
     setSnapshotMessage(result.message);
-    if (result.success) await loadSnapshots();
+    if (result.success) { await loadAvailableDays(); }
     e.target.value = "";
   };
 
@@ -232,6 +243,17 @@ export default function InventoryPage() {
             {Array.from({ length: 12 }, (_, i) => (
               <option key={i + 1} value={i + 1}>Tháng {i + 1}</option>
             ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">Ngày</label>
+          <select title="Chọn ngày" value={selectedDay} onChange={(e) => setSelectedDay(parseInt(e.target.value))} className="cvf-input w-28 rounded-lg px-3 py-2 text-sm">
+            {availableDays.length === 0
+              ? <option value={0}>— Chưa có —</option>
+              : availableDays.map((d) => (
+                  <option key={d} value={d}>Ngày {d}</option>
+                ))
+            }
           </select>
         </div>
       </div>

@@ -334,7 +334,6 @@ export class ContainerDB extends Dexie {
             vessels: '++id, &name, active',
             sync_queue: '++id, table_name, synced, timestamp'
         }).upgrade(async tx => {
-            // Populate date/year/month/day on existing v6 records
             await tx.table('inventory_snapshots').toCollection().modify((s) => {
                 if (!s.year) {
                     const d = s.imported_at ? new Date(s.imported_at) : new Date();
@@ -344,6 +343,20 @@ export class ContainerDB extends Dexie {
                     s.day = d.getDate();
                 }
             });
+        });
+
+        // Version 8: Snapshots per day (one per type per day)
+        this.version(8).stores({
+            daily_data: '++id, date, year, month, day, [year+month], [year+month+day]',
+            monthly_summary: '++id, year, month, quarter, [year+month], [year+quarter]',
+            yearly_summary: '++id, &year',
+            metadata: '&key',
+            vessel_data: '++id, date, year, month, day, [year+month], [year+month+day], shipping_line, vessel_name',
+            inventory_settings: '++id',
+            inventory_snapshots: '++id, type, [type+year+month+day], [type+year+month], year, [year+month], [year+month+day]',
+            employees: '++id, &mscd, department, shift, [department+shift], active',
+            vessels: '++id, &name, active',
+            sync_queue: '++id, table_name, synced, timestamp'
         });
     }
 }

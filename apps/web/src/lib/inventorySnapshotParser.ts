@@ -74,9 +74,9 @@ export async function importInventorySnapshot(
       imported_at: new Date(),
     };
 
-    // Upsert: one record per type per month
+    // Upsert: one record per type per day
     const existing = await db.inventory_snapshots
-      .where("[type+year+month]").equals([type, year, month]).first();
+      .where("[type+year+month+day]").equals([type, year, month, day]).first();
     if (existing?.id) {
       await db.inventory_snapshots.put({ ...snapshot, id: existing.id });
     } else {
@@ -84,29 +84,38 @@ export async function importInventorySnapshot(
     }
 
     const label = type === "ton_cu" ? "Tồn Cũ" : "Tồn Mới";
-    return { success: true, message: `Đã import ${label} ${day}/${month}/${year}: ${total} containers`, total };
+    return { success: true, message: `Đã import ${label} ngày ${day}/${month}/${year}: ${total} containers`, total };
   } catch (error) {
     return { success: false, message: `Lỗi: ${error}`, total: 0 };
   }
 }
 
-export async function getInventorySnapshots(year: number, month: number): Promise<{
+export async function getInventorySnapshots(year: number, month: number, day: number): Promise<{
   ton_cu?: InventorySnapshot;
   ton_moi?: InventorySnapshot;
 }> {
   const all = await db.inventory_snapshots
-    .where("[year+month]").equals([year, month]).toArray();
+    .where("[year+month+day]").equals([year, month, day]).toArray();
   return {
     ton_cu: all.find((s) => s.type === "ton_cu"),
     ton_moi: all.find((s) => s.type === "ton_moi"),
   };
 }
 
+// Returns sorted list of days that have at least one snapshot in the given month
+export async function getSnapshotDays(year: number, month: number): Promise<number[]> {
+  const all = await db.inventory_snapshots
+    .where("[year+month]").equals([year, month]).toArray();
+  const days = [...new Set(all.map((s) => s.day))].sort((a, b) => a - b);
+  return days;
+}
+
 export async function clearInventorySnapshot(
   type: "ton_cu" | "ton_moi",
   year: number,
-  month: number
+  month: number,
+  day: number
 ): Promise<void> {
   await db.inventory_snapshots
-    .where("[type+year+month]").equals([type, year, month]).delete();
+    .where("[type+year+month+day]").equals([type, year, month, day]).delete();
 }
