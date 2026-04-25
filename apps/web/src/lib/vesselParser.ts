@@ -92,55 +92,70 @@ export function parseVesselExcel(workbook: XLSX.WorkBook): ParsedVesselData[] {
     return { day, month, year, date: dateStr };
   };
 
-  // Find header row (look for "STT" or "Ngày" or "Tên tàu")
+  // Find header row: search rows 0-10, match by keyword count across all columns
+  const headerKeywords = ["stt", "ngày", "ngay", "date", "vessel", "tàu", "tau",
+    "atb", "atd", "nhập", "nhap", "xuất", "xuat", "shift", "discharge", "loading"];
+
   let headerRow = 2;
-  for (let r = 0; r <= 5; r++) {
-    const cell = sheet[XLSX.utils.encode_cell({ r, c: 0 })];
-    const cellText = String(cell?.v || "").toLowerCase();
-    if (cellText.includes("stt") || cellText.includes("ngày")) {
-      headerRow = r;
-      break;
+  for (let r = 0; r <= Math.min(10, range.e.r); r++) {
+    let hits = 0;
+    for (let c = 0; c <= Math.min(20, range.e.c); c++) {
+      const cell = sheet[XLSX.utils.encode_cell({ r, c })];
+      const text = String(cell?.v || "").toLowerCase().trim();
+      if (headerKeywords.some((kw) => text.includes(kw))) hits++;
     }
+    if (hits >= 2) { headerRow = r; break; }
   }
 
-  // Detect column mapping
-  // Expected: STT | Ngày | Tên tàu | ATB | ATD | Nhập tàu | Xuất tàu | Shift In | Shift Out
-  // But could also be: Ngày | Tên tàu | ATB | ATD | Nhập tàu | Xuất tàu | Shift In | Shift Out
-  let colOffset = 0;
-  const firstHeaderCell = getStringValue(headerRow, 0).toLowerCase();
-  if (firstHeaderCell.includes("stt")) {
-    colOffset = 0; // Has STT column
-  } else if (firstHeaderCell.includes("ngày")) {
-    colOffset = -1; // No STT column, shift indexes
+  // Map columns dynamically by header text
+  const cols: Record<string, number> = {};
+  for (let c = 0; c <= Math.min(30, range.e.c); c++) {
+    const text = getStringValue(headerRow, c).toLowerCase().trim();
+    if (!text) continue;
+    if (text === "stt" || text === "no" || text === "seq") cols.stt = c;
+    else if (text.includes("ngày") || text.includes("ngay") || text === "date") cols.date = c;
+    else if (text.includes("vessel") || text.includes("tên tàu") || text.includes("ten tau") || text === "tàu" || text === "tau") cols.vessel = c;
+    else if (text === "atb") cols.atb = c;
+    else if (text === "atd") cols.atd = c;
+    else if ((text.includes("nhập") || text.includes("nhap") || text.includes("discharge")) && !cols.nhap) cols.nhap = c;
+    else if ((text.includes("xuất") || text.includes("xuat") || text.includes("loading") || text.includes("unload")) && !cols.xuat) cols.xuat = c;
+    else if (text.includes("shift") && (text.includes("in") || text.includes("nhập") || text.includes("nhap"))) cols.shift_in = c;
+    else if (text.includes("shift") && (text.includes("out") || text.includes("xuất") || text.includes("xuat"))) cols.shift_out = c;
+  }
+
+  // Fallback: if dynamic mapping found nothing, use fixed offsets from old logic
+  if (cols.date === undefined) {
+    const hasStt = getStringValue(headerRow, 0).toLowerCase().includes("stt");
+    cols.date = hasStt ? 1 : 0;
+    if (hasStt) cols.stt = 0;
+    cols.vessel  = (cols.date) + 1;
+    cols.atb     = (cols.date) + 2;
+    cols.atd     = (cols.date) + 3;
+    cols.nhap    = (cols.date) + 4;
+    cols.xuat    = (cols.date) + 5;
+    cols.shift_in  = (cols.date) + 6;
+    cols.shift_out = (cols.date) + 7;
   }
 
   // Parse data rows
   for (let r = headerRow + 1; r <= range.e.r; r++) {
-    // Date is in column 1 (or 0 if no STT)
-    const dateCol = colOffset === 0 ? 1 : 0;
-    const dateInfo = getDateValue(r, dateCol);
+    const dateInfo = getDateValue(r, cols.date ?? 1);
     if (!dateInfo) continue;
 
-    const stt = colOffset === 0 ? getValue(r, 0) : undefined;
-    const vessel_name = getStringValue(r, dateCol + 1);
-    const atb = getStringValue(r, dateCol + 2);
-    const atd = getStringValue(r, dateCol + 3);
-    const nhap_tau = getValue(r, dateCol + 4);
-    const xuat_tau = getValue(r, dateCol + 5);
-    const shift_in = getValue(r, dateCol + 6);
-    const shift_out = getValue(r, dateCol + 7);
+    const nhap_tau  = cols.nhap     !== undefined ? getValue(r, cols.nhap)     : 0;
+    const xuat_tau  = cols.xuat     !== undefined ? getValue(r, cols.xuat)     : 0;
+    const shift_in  = cols.shift_in  !== undefined ? getValue(r, cols.shift_in)  : 0;
+    const shift_out = cols.shift_out !== undefined ? getValue(r, cols.shift_out) : 0;
 
     // Skip empty rows
-    if (nhap_tau === 0 && xuat_tau === 0 && shift_in === 0 && shift_out === 0) {
-      continue;
-    }
+    if (nhap_tau === 0 && xuat_tau === 0 && shift_in === 0 && shift_out === 0) continue;
 
     data.push({
       ...dateInfo,
-      stt,
-      vessel_name: vessel_name || undefined,
-      atb: atb || undefined,
-      atd: atd || undefined,
+      stt:         cols.stt    !== undefined ? getValue(r, cols.stt) : undefined,
+      vessel_name: cols.vessel !== undefined ? getStringValue(r, cols.vessel) || undefined : undefined,
+      atb:         cols.atb    !== undefined ? getStringValue(r, cols.atb)    || undefined : undefined,
+      atd:         cols.atd    !== undefined ? getStringValue(r, cols.atd)    || undefined : undefined,
       nhap_tau,
       xuat_tau,
       shift_in,

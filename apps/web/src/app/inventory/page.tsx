@@ -171,7 +171,7 @@ export default function InventoryPage() {
       <div className="flex flex-wrap items-end gap-4">
         <div>
           <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">Năm</label>
-          <select title="Chọn năm" value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="cvf-input rounded-lg px-3 py-2 text-sm">
+          <select title="Chọn năm" value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="cvf-input w-28 rounded-lg px-3 py-2 text-sm">
             {(availableYears || [getCurrentYear()]).map((year) => (
               <option key={year} value={year}>{year}</option>
             ))}
@@ -179,7 +179,7 @@ export default function InventoryPage() {
         </div>
         <div>
           <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">Tháng</label>
-          <select title="Chọn tháng" value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value))} className="cvf-input rounded-lg px-3 py-2 text-sm">
+          <select title="Chọn tháng" value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value))} className="cvf-input w-36 rounded-lg px-3 py-2 text-sm">
             {Array.from({ length: 12 }, (_, i) => (
               <option key={i + 1} value={i + 1}>Tháng {i + 1}</option>
             ))}
