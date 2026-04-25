@@ -101,7 +101,7 @@ export default function ShipReportPage() {
       data.sort((a, b) => {
         const dateA = a.atb ? new Date(a.atb).getTime() : 0;
         const dateB = b.atb ? new Date(b.atb).getTime() : 0;
-        return dateB - dateA;
+        return dateA - dateB;
       });
       logger.debug("Loaded vessel reports", data);
       if (data.length > 0) {
@@ -214,6 +214,12 @@ export default function ShipReportPage() {
             result.errors.length > 0 ? `Lỗi ${result.errors.length} dòng.` : ""
           }`
         );
+        // Auto-switch filter to first imported period
+        if (result.periods.length > 0) {
+          const [m, y] = result.periods[0].split('/').map(Number);
+          setSelectedYear(y);
+          setSelectedMonth(m);
+        }
         void loadReports();
         void loadFilters();
       } catch (error) {

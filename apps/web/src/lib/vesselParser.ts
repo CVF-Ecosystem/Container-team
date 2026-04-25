@@ -18,12 +18,17 @@ export interface ParsedVesselData {
   month: number;
   year: number;
   vessel_name?: string;
+  voyage?: string;
+  shipping_line?: string;
   atb?: string;
+  atw?: string;
+  atc?: string;
   atd?: string;
   nhap_tau: number;
   xuat_tau: number;
   shift_in: number;
   shift_out: number;
+  teus?: number;
 }
 
 // Parse "dd/mm/yyyy HH:MM" hoặc "dd/mm/yyyy" hoặc Excel date number
@@ -46,6 +51,7 @@ function parseDateFromCell(cell: XLSX.CellObject | undefined): { day: number; mo
   }
 
   if (!day || !month || !year) return null;
+  if (year < 2000 || year > 2099) return null;
   return {
     day, month, year,
     date: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
@@ -68,6 +74,33 @@ function num(sheet: XLSX.WorkSheet, r: number, c: number): number {
   return isNaN(v) ? 0 : v;
 }
 
+// Convert Excel datetime cell → ISO string "YYYY-MM-DDTHH:MM:00"
+// Handles: numeric serial (Excel stores dates as numbers), "dd/mm/yyyy HH:MM" string, cell.w formatted text
+function cellToISODatetime(cell: XLSX.CellObject | undefined): string | undefined {
+  if (!cell) return undefined;
+  const p2 = (n: number) => String(n).padStart(2, "0");
+
+  // 1. Numeric serial — most reliable for Excel datetime
+  if (typeof cell.v === "number") {
+    const d = XLSX.SSF.parse_date_code(cell.v);
+    if (!d || d.y < 2000 || d.y > 2099) return undefined;
+    return `${d.y}-${p2(d.m)}-${p2(d.d)}T${p2(d.H)}:${p2(d.M)}:${p2(d.S)}`;
+  }
+
+  // 2. Try cell.w (formatted display string) or cell.v string
+  const s = (cell.w ?? String(cell.v ?? "")).trim();
+  if (!s) return undefined;
+
+  const m = s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s*(\d{1,2})?:?(\d{2})?/);
+  if (m) {
+    const [, d, mo, y, h = "0", min = "00"] = m;
+    const year = parseInt(y, 10);
+    if (year < 2000 || year > 2099) return undefined;
+    return `${y}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}T${p2(parseInt(h,10))}:${min}:00`;
+  }
+  return undefined;
+}
+
 /**
  * Format A — File gốc của cảng (Tau 2025.xlsx, 61 cột)
  * Nhận dạng: range.e.c >= 30 VÀ row 2 col 6 = "ATB"
@@ -84,8 +117,7 @@ function parsePortNativeFormat(sheet: XLSX.WorkSheet, range: XLSX.Range): Parsed
   for (let r = 7; r <= range.e.r; r++) {          // data bắt đầu từ row index 7
     const vesselName = str(sheet, r, COL.VESSEL);
 
-    // Bỏ qua header row tháng (col Vessel = "Vessel" hoặc rỗng)
-    if (!vesselName || vesselName === "Vessel" || vesselName === "TỔNG LŨY TIẾN NĂM 2025") continue;
+    if (!vesselName || vesselName === "Vessel" || vesselName.startsWith("TỔNG")) continue;
 
     const dateInfo = parseDateFromCell(getCell(sheet, r, COL.ATB));
     if (!dateInfo) continue;
@@ -116,6 +148,57 @@ function parsePortNativeFormat(sheet: XLSX.WorkSheet, range: XLSX.Range): Parsed
   }
 
   return Array.from(byDate.values());
+}
+
+/**
+ * Format A (per-vessel) — 1 record mỗi tàu, đầy đủ ATW/ATC/TEUs/Voyage
+ * Col layout (0-indexed): D=3 Vessel, F=5 Voyage, G=6 ATB, H=7 ATW, I=8 ATC, J=9 ATD
+ *   R=17 LINE, Y=24 Nhập Conts, Z=25 Nhập Teus, AG=32 Xuất Conts, AH=33 Xuất Teus
+ *   AQ=42 Shift In, AY=50 Shift Out
+ */
+function parsePortNativeFormatPerVessel(sheet: XLSX.WorkSheet, range: XLSX.Range): ParsedVesselData[] {
+  const COL = {
+    VESSEL: 3, VOYAGE: 5,
+    ATB: 6, ATW: 7, ATC: 8, ATD: 9,
+    LINE: 17,
+    NHAP_C: 24, NHAP_T: 25,
+    XUAT_C: 32, XUAT_T: 33,
+    SHIFT_IN: 42, SHIFT_OUT: 50,
+  };
+
+  const results: ParsedVesselData[] = [];
+
+  for (let r = 7; r <= range.e.r; r++) {
+    const vesselName = str(sheet, r, COL.VESSEL);
+    if (!vesselName || vesselName === "Vessel" || vesselName.startsWith("TỔNG")) continue;
+
+    const dateInfo = parseDateFromCell(getCell(sheet, r, COL.ATB));
+    if (!dateInfo) continue;
+
+    const nhap_tau  = num(sheet, r, COL.NHAP_C);
+    const xuat_tau  = num(sheet, r, COL.XUAT_C);
+    const shift_in  = num(sheet, r, COL.SHIFT_IN);
+    const shift_out = num(sheet, r, COL.SHIFT_OUT);
+    if (nhap_tau === 0 && xuat_tau === 0 && shift_in === 0 && shift_out === 0) continue;
+
+    const line = str(sheet, r, COL.LINE);
+    const teus = num(sheet, r, 59); // BH = TỔNG CỘNG N+X+SHIFTING TEUs
+
+    results.push({
+      ...dateInfo,
+      vessel_name: vesselName,
+      voyage: str(sheet, r, COL.VOYAGE) || undefined,
+      shipping_line: (line && line !== "0") ? line : undefined,
+      atb: cellToISODatetime(getCell(sheet, r, COL.ATB)),
+      atw: cellToISODatetime(getCell(sheet, r, COL.ATW)),
+      atc: cellToISODatetime(getCell(sheet, r, COL.ATC)),
+      atd: cellToISODatetime(getCell(sheet, r, COL.ATD)),
+      nhap_tau, xuat_tau, shift_in, shift_out,
+      teus: teus > 0 ? teus : undefined,
+    });
+  }
+
+  return results;
 }
 
 /**
@@ -174,6 +257,20 @@ export function parseVesselExcel(workbook: XLSX.WorkBook): ParsedVesselData[] {
 
   return isPortNative
     ? parsePortNativeFormat(sheet, range)
+    : parseTemplateFormat(sheet, range);
+}
+
+/**
+ * Parse file Excel tàu — per-vessel (dùng cho ship-report page)
+ * Trả về 1 record mỗi tàu, không gộp theo ngày.
+ */
+export function parseVesselExcelPerVessel(workbook: XLSX.WorkBook): ParsedVesselData[] {
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  if (!sheet) return [];
+  const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
+  const isPortNative = range.e.c >= 30 && str(sheet, 2, 6) === "ATB";
+  return isPortNative
+    ? parsePortNativeFormatPerVessel(sheet, range)
     : parseTemplateFormat(sheet, range);
 }
 

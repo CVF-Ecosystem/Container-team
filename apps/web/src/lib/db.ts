@@ -201,6 +201,23 @@ export interface InventorySettings {
     updated_at: Date;
 }
 
+// ============= INVENTORY SNAPSHOT (Tồn bãi container) =============
+
+export interface InventorySnapshot {
+    id?: number;
+    type: 'ton_cu' | 'ton_moi';  // TON CU = tồn cũ, TON MOI = tồn mới
+    filename?: string;
+    total: number;
+    cont_20: number;     // 20' containers
+    cont_40: number;     // 40'+ containers
+    full: number;        // Full (F)
+    empty: number;       // Empty (E)
+    nhap: number;        // Hướng: Import/Nhập
+    xuat: number;        // Hướng: Export/Xuất
+    luu: number;         // Hướng: Storage/Lưu bãi
+    imported_at: Date;
+}
+
 // ============= SYNC QUEUE (Persistent offline queue) =============
 
 export interface SyncQueueItem {
@@ -222,6 +239,7 @@ export class ContainerDB extends Dexie {
     metadata!: Table<Metadata>;
     vessel_data!: Table<VesselData>;
     inventory_settings!: Table<InventorySettings>;
+    inventory_snapshots!: Table<InventorySnapshot>;
     employees!: Table<Employee>;
     vessels!: Table<VesselList>;
     sync_queue!: Table<SyncQueueItem>;
@@ -282,7 +300,20 @@ export class ContainerDB extends Dexie {
             inventory_settings: '++id',
             employees: '++id, &mscd, department, shift, [department+shift], active',
             vessels: '++id, &name, active',
-            // Persistent offline sync queue — survives page reloads
+            sync_queue: '++id, table_name, synced, timestamp'
+        });
+
+        // Version 6: Inventory Snapshots (TON CU / TON MOI)
+        this.version(6).stores({
+            daily_data: '++id, date, year, month, day, [year+month], [year+month+day]',
+            monthly_summary: '++id, year, month, quarter, [year+month], [year+quarter]',
+            yearly_summary: '++id, &year',
+            metadata: '&key',
+            vessel_data: '++id, date, year, month, day, [year+month], [year+month+day], shipping_line, vessel_name',
+            inventory_settings: '++id',
+            inventory_snapshots: '++id, &type',
+            employees: '++id, &mscd, department, shift, [department+shift], active',
+            vessels: '++id, &name, active',
             sync_queue: '++id, table_name, synced, timestamp'
         });
     }

@@ -2,15 +2,18 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Download, Pencil, Save, Ship, X } from "lucide-react";
-import { db, getCurrentYear, InventorySettings } from "@/lib/db";
+import { ArrowDownToLine, ArrowUpFromLine, Pencil, Save, Upload, X } from "lucide-react";
+import { db, getCurrentYear, InventorySettings, InventorySnapshot } from "@/lib/db";
 import {
   getInventorySettings,
   saveInventorySettings,
   calculateDailyInventory,
   DailyInventory,
 } from "@/lib/inventoryService";
-import { importVesselExcelFile, downloadVesselTemplate } from "@/lib/vesselParser";
+import {
+  importInventorySnapshot,
+  getInventorySnapshots,
+} from "@/lib/inventorySnapshotParser";
 
 export default function InventoryPage() {
   const [settings, setSettings] = useState<InventorySettings | null>(null);
@@ -25,8 +28,10 @@ export default function InventoryPage() {
   const [inventoryData, setInventoryData] = useState<DailyInventory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const vesselFileRef = useRef<HTMLInputElement>(null);
-  const [uploadMessage, setUploadMessage] = useState("");
+  const [snapshots, setSnapshots] = useState<{ ton_cu?: InventorySnapshot; ton_moi?: InventorySnapshot }>({});
+  const [snapshotMessage, setSnapshotMessage] = useState("");
+  const tonCuRef = useRef<HTMLInputElement>(null);
+  const tonMoiRef = useRef<HTMLInputElement>(null);
 
   const availableYears = useLiveQuery(async () => {
     const years = await db.daily_data.orderBy("year").uniqueKeys();
@@ -56,8 +61,14 @@ export default function InventoryPage() {
     setIsLoading(false);
   }, [selectedYear, selectedMonth]);
 
+  const loadSnapshots = useCallback(async () => {
+    const s = await getInventorySnapshots();
+    setSnapshots(s);
+  }, []);
+
   useEffect(() => { loadSettings(); }, [loadSettings]);
   useEffect(() => { loadInventory(); }, [loadInventory, settings]);
+  useEffect(() => { loadSnapshots(); }, [loadSnapshots]);
 
   const handleSaveSettings = async () => {
     await saveInventorySettings({
@@ -69,19 +80,17 @@ export default function InventoryPage() {
     setEditMode(false);
   };
 
-  const handleVesselUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSnapshotImport = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    type: "ton_cu" | "ton_moi"
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadMessage("Đang import...");
-    const result = await importVesselExcelFile(file);
-    setUploadMessage(result.message);
-    if (result.success) await loadInventory();
-    if (vesselFileRef.current) vesselFileRef.current.value = "";
-  };
-
-  const handleDownloadTemplate = () => {
-    downloadVesselTemplate();
-    setUploadMessage("Đã tải xuống file template mẫu");
+    setSnapshotMessage("Đang import...");
+    const result = await importInventorySnapshot(file, type);
+    setSnapshotMessage(result.message);
+    if (result.success) await loadSnapshots();
+    e.target.value = "";
   };
 
   const summary = useMemo(() => {
@@ -98,6 +107,43 @@ export default function InventoryPage() {
     if (percent >= 80) return "text-[var(--color-warning)]/70 bg-[var(--color-warning)]/5";
     return "text-[var(--color-success)] bg-[var(--color-success)]/10";
   };
+
+  const snapshotRows = useMemo(() => {
+    const cu = snapshots.ton_cu;
+    const moi = snapshots.ton_moi;
+    if (!cu && !moi) return null;
+
+    const diff = (a?: number, b?: number) => {
+      if (a == null || b == null) return null;
+      return b - a;
+    };
+    const fmtDiff = (d: number | null) => {
+      if (d == null) return "—";
+      return d > 0 ? `+${d.toLocaleString()}` : d.toLocaleString();
+    };
+    const diffColor = (d: number | null) => {
+      if (d == null) return "text-[var(--color-text-muted)]";
+      if (d > 0) return "text-[var(--color-success)]";
+      if (d < 0) return "text-[var(--color-danger)]";
+      return "text-[var(--color-text-muted)]";
+    };
+
+    const rows = [
+      { label: "Tổng cộng", cu: cu?.total, moi: moi?.total },
+      { label: "Cont 20'", cu: cu?.cont_20, moi: moi?.cont_20 },
+      { label: "Cont 40'+", cu: cu?.cont_40, moi: moi?.cont_40 },
+      { label: "Full (F)", cu: cu?.full, moi: moi?.full },
+      { label: "Empty (E)", cu: cu?.empty, moi: moi?.empty },
+      { label: "Hướng Nhập", cu: cu?.nhap, moi: moi?.nhap },
+      { label: "Hướng Xuất", cu: cu?.xuat, moi: moi?.xuat },
+      { label: "Lưu bãi", cu: cu?.luu, moi: moi?.luu },
+    ];
+
+    return rows.map((r) => {
+      const d = diff(r.cu, r.moi);
+      return { ...r, diff: d, diffColor: diffColor(d), fmtDiff: fmtDiff(d) };
+    });
+  }, [snapshots]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-5">
@@ -167,7 +213,94 @@ export default function InventoryPage() {
         )}
       </div>
 
-      {/* Filter + vessel actions */}
+      {/* TON CU / TON MOI snapshot section */}
+      <div className="cvf-card rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Tồn Bãi Container</h2>
+          <div className="flex gap-2">
+            <input type="file" ref={tonCuRef} accept=".xlsx,.xls" onChange={(e) => handleSnapshotImport(e, "ton_cu")} className="hidden" />
+            <input type="file" ref={tonMoiRef} accept=".xlsx,.xls" onChange={(e) => handleSnapshotImport(e, "ton_moi")} className="hidden" />
+            <button
+              type="button"
+              onClick={() => tonCuRef.current?.click()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+            >
+              <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+              Import Tồn Cũ
+            </button>
+            <button
+              type="button"
+              onClick={() => tonMoiRef.current?.click()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-[var(--color-accent)]/40 text-[var(--color-accent)] hover:bg-[var(--color-accent-dim)] transition-colors"
+            >
+              <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+              Import Tồn Mới
+            </button>
+          </div>
+        </div>
+
+        {snapshotMessage && (
+          <div className="mb-4 rounded-lg px-3 py-2 text-xs border bg-[var(--color-accent-dim)] border-[var(--color-border-strong)] text-[var(--color-accent)]">
+            {snapshotMessage}
+          </div>
+        )}
+
+        {snapshotRows ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[var(--color-border)]">
+                  <th className="py-2 pr-6 text-left text-xs font-semibold text-[var(--color-text-muted)] w-32">Loại</th>
+                  <th className="py-2 px-4 text-right text-xs font-semibold text-[var(--color-text-secondary)]">
+                    <div className="flex items-center justify-end gap-1">
+                      <ArrowDownToLine className="h-3 w-3" aria-hidden="true" />
+                      Tồn Cũ
+                    </div>
+                    {snapshots.ton_cu?.filename && (
+                      <div className="text-[10px] font-normal text-[var(--color-text-muted)] truncate max-w-28">{snapshots.ton_cu.filename}</div>
+                    )}
+                  </th>
+                  <th className="py-2 px-4 text-right text-xs font-semibold text-[var(--color-accent)]">
+                    <div className="flex items-center justify-end gap-1">
+                      <ArrowUpFromLine className="h-3 w-3" aria-hidden="true" />
+                      Tồn Mới
+                    </div>
+                    {snapshots.ton_moi?.filename && (
+                      <div className="text-[10px] font-normal text-[var(--color-text-muted)] truncate max-w-28">{snapshots.ton_moi.filename}</div>
+                    )}
+                  </th>
+                  <th className="py-2 px-4 text-right text-xs font-semibold text-[var(--color-text-muted)]">+/−</th>
+                </tr>
+              </thead>
+              <tbody>
+                {snapshotRows.map((row, i) => (
+                  <tr
+                    key={row.label}
+                    className={`border-t border-[var(--color-border)] ${i === 0 ? "font-bold" : ""}`}
+                  >
+                    <td className="py-2 pr-6 text-[var(--color-text-secondary)] text-xs">{row.label}</td>
+                    <td className="py-2 px-4 text-right text-[var(--color-text-primary)]">
+                      {row.cu != null ? row.cu.toLocaleString() : "—"}
+                    </td>
+                    <td className="py-2 px-4 text-right text-[var(--color-accent)]">
+                      {row.moi != null ? row.moi.toLocaleString() : "—"}
+                    </td>
+                    <td className={`py-2 px-4 text-right text-xs font-medium ${row.diffColor}`}>
+                      {row.fmtDiff}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm text-[var(--color-text-muted)]">
+            Chưa có dữ liệu. Import file Tồn Cũ và Tồn Mới để xem bảng so sánh.
+          </p>
+        )}
+      </div>
+
+      {/* Filter row */}
       <div className="flex flex-wrap items-end gap-4">
         <div>
           <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">Năm</label>
@@ -185,24 +318,7 @@ export default function InventoryPage() {
             ))}
           </select>
         </div>
-        <div className="flex items-center gap-2 ml-auto">
-          <input type="file" title="Chọn file Excel" ref={vesselFileRef} accept=".xlsx,.xls" onChange={handleVesselUpload} className="hidden" />
-          <button type="button" onClick={() => vesselFileRef.current?.click()} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-[var(--color-border)] text-[var(--color-accent)] hover:bg-[var(--color-accent-dim)] transition-colors">
-            <Ship className="h-4 w-4" aria-hidden="true" />
-            Upload Data Tàu
-          </button>
-          <button type="button" onClick={handleDownloadTemplate} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors">
-            <Download className="h-4 w-4" aria-hidden="true" />
-            Tải Template
-          </button>
-        </div>
       </div>
-
-      {uploadMessage && (
-        <div className="rounded-lg px-4 py-3 text-sm border bg-[var(--color-accent-dim)] border-[var(--color-border-strong)] text-[var(--color-accent)]">
-          {uploadMessage}
-        </div>
-      )}
 
       {/* Summary cards */}
       {summary && (
@@ -233,7 +349,7 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {/* Data table */}
+      {/* Daily movement table */}
       <div className="cvf-card rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           {isLoading ? (
