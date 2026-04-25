@@ -1,0 +1,16 @@
+#!/bin/sh
+# Pre-commit hook for apps/web
+# Runs TypeScript type check + lint-staged
+
+set -e
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+WEB_DIR="$REPO_ROOT/apps/web"
+
+cd "$WEB_DIR"
+
+echo "🔍 Running TypeScript type check..."
+npm run typecheck
+
+echo "🧹 Running lint-staged..."
+npx lint-staged

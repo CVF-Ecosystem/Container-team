@@ -1,0 +1,11 @@
+export { default as authRoutes } from "./auth.js";
+export { default as auditRoutes } from "./audit.js";
+export { default as dailyDataRoutes } from "./daily-data.js";
+export { default as employeesRoutes } from "./employees.js";
+export { default as reportsRoutes } from "./reports.js";
+export { default as vesselsRoutes } from "./vessels.js";
+export { default as statsRoutes } from "./stats.js";
+export { default as opsRoutes } from "./ops.js";
+export { default as notificationRoutes } from "./notifications.js";
+export { default as integrationRoutes } from "./integrations.js";
+export { default as readinessRoutes } from "./readiness.js";

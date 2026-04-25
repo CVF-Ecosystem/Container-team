@@ -1,0 +1,19 @@
+{
+  "name": "tan-thuan-port-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tan Thuan Port Web Platform",
+  "packageManager": "npm@10.9.2",
+  "workspaces": [
+    "apps/web",
+    "apps/api",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "cd apps/web && npm run dev",
+    "build": "npm run build --workspace=packages/shared-types && npm run build --workspace=apps/web",
+    "build:api": "npm run build --workspace=apps/api",
+    "start": "cd apps/web && npm start"
+  },
+  "devDependencies": {}
+}

@@ -1,0 +1,17 @@
+{
+  "name": "@tanthuan/shared-types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types for Tan Thuan Port Platform",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "name": "daily-report-pwa",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage --reporter=lcov",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@e965/xlsx": "^0.20.3",
+    "@sentry/nextjs": "^10.40.0",
+    "@tanthuan/shared-types": "file:../../packages/shared-types",
+    "dexie": "^4.2.1",
+    "dexie-react-hooks": "^4.2.0",
+    "lucide-react": "^1.11.0",
+    "next": "^16.2.4",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "recharts": "^3.6.0"
+  },
+  "devDependencies": {
+    "@netlify/plugin-nextjs": "^5",
+    "@playwright/test": "^1.57.0",
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.1",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^5.1.2",
+    "@vitest/coverage-v8": "^4.0.16",
+    "concurrently": "^9.2.1",
+    "eslint": "^9",
+    "eslint-config-next": "^16.2.4",
+    "fake-indexeddb": "^6.2.5",
+    "husky": "^9.1.7",
+    "jsdom": "^27.4.0",
+    "lint-staged": "^16.2.7",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^4.0.16"
+  },
+  "lint-staged": {
+    "*.{js,ts,jsx,tsx}": "eslint --cache --fix"
+  }
+}
