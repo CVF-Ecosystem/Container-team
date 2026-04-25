@@ -352,7 +352,7 @@ export default function InventoryPage() {
           </div>
         ) : (
           <p className="text-sm text-[var(--color-text-muted)]">
-            Chưa có dữ liệu. Import file Tồn Cũ và Tồn Mới để xem bảng so sánh.
+            Chưa có dữ liệu. 
           </p>
         )}
       </div>

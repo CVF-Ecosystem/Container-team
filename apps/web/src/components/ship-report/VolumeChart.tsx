@@ -61,7 +61,9 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
 
 export default function VolumeChart({ data }: VolumeChartProps) {
   const chartData: ChartDataItem[] = [...data].reverse().map((d) => ({
-    name: d.vessel_name?.split(" ")[0] || d.vessel_name?.substring(0, 10),
+    name: d.vessel_name
+      ? d.vessel_name.split(" ").map(w => /^\d/.test(w) ? w : w[0]).join("")
+      : "N/A",
     fullName: d.vessel_name,
     voyage: d.voyage,
     import: d.nhap_tau || 0,

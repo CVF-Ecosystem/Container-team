@@ -173,7 +173,7 @@ export default function SettingsPage() {
                     Đăng xuất
                 </h2>
                 <p className="text-sm text-[var(--color-text-secondary)] mb-4">
-                    Đăng xuất khỏi hệ thống. Bạn sẽ cần đăng nhập lại để tiếp tục.
+                    Đăng xuất khỏi hệ thống. 
                 </p>
                 <button
                     type="button"

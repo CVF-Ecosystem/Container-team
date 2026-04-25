@@ -4,13 +4,19 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:3d": "cd \"../Tan Thuan Digital Twin\" && npm run dev",
+    "dev:all": "concurrently --names \"PWA,3D\" --prefix-colors \"cyan,magenta\" \"npm run dev\" \"npm run dev:3d\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --reporter=lcov",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "prepare": "node scripts/prepare.js"
   },
   "dependencies": {
     "@e965/xlsx": "^0.20.3",
@@ -25,7 +31,6 @@
     "recharts": "^3.6.0"
   },
   "devDependencies": {
-    "@netlify/plugin-nextjs": "^5",
     "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",

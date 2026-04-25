@@ -76,7 +76,9 @@ export default function ProductivityChart({ data }: ProductivityChartProps) {
         : 0);
 
     return {
-      name: d.vessel_name?.split(" ")[0] || d.vessel_name?.substring(0, 10),
+      name: d.vessel_name
+        ? d.vessel_name.split(" ").map(w => /^\d/.test(w) ? w : w[0]).join("")
+        : "N/A",
       fullName: d.vessel_name,
       voyage: d.voyage,
       productivity, // Moves/h

@@ -9,7 +9,7 @@ export default function AdminResetPage() {
                 {/* Header */}
                 <div className="text-center mb-8">
                     <h1 className="text-2xl font-bold text-white mb-2">
-                        🔑 Hỗ Trợ Tài Khoản Admin
+                        🔑 Hỗ trợ Admin
                     </h1>
                     <p className="text-gray-400 text-sm">
                         Cơ chế reset cục bộ đã bị loại bỏ khỏi ứng dụng

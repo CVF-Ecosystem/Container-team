@@ -1,8 +1,7 @@
 import { db, VesselData } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { parseVesselExcelPerVessel } from '@/lib/vesselParser';
 import * as XLSX from '@e965/xlsx';
-
-type ExcelRow = unknown[];
 
 // Tính toán các chỉ số năng suất
 export function calculateProductivity(data: Partial<VesselData>): Partial<VesselData> {
@@ -168,241 +167,101 @@ export async function getUniqueVesselNames(): Promise<string[]> {
     return Array.from(vessels).sort();
 }
 
-// Import từ Excel (sử dụng template chuẩn)
-// Import từ Excel (sử dụng template chuẩn)
+// Import từ Excel — mỗi tàu 1 record riêng, populate vessel master list
 export async function importVesselReportsFromExcel(file: File): Promise<{ count: number, errors: string[], periods: string[] }> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
+    try {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: 'array' });
+
+        const parsedData = parseVesselExcelPerVessel(workbook);
+        if (parsedData.length === 0) {
+            return { count: 0, errors: ['Không tìm thấy dữ liệu tàu trong file'], periods: [] };
+        }
+
+        logger.debug(`Parsed ${parsedData.length} vessel records from Excel`);
+
+        let imported = 0;
+        let updated = 0;
+        const errors: string[] = [];
+
+        for (const row of parsedData) {
             try {
-                const data = new Uint8Array(e.target?.result as ArrayBuffer);
-                // Enable cellDates to let XLSX parse dates automatically
-                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
+                // Dedup: 1 tàu / 1 ngày (vessel_name + date)
+                const existing = row.vessel_name
+                    ? await db.vessel_data
+                        .where('vessel_name')
+                        .equals(row.vessel_name)
+                        .filter(v => v.date === row.date)
+                        .first()
+                    : undefined;
 
-                // Convert to JSON with raw values
-                const jsonData = XLSX.utils.sheet_to_json<ExcelRow>(worksheet, { header: 1 });
-                if (!jsonData || jsonData.length === 0) {
-                    return resolve({ count: 0, errors: ['File empty'], periods: [] });
-                }
-
-                // Find header row (row containing 'Vessel' or 'Tàu')
-                let headerRowIndex = 0;
-                let headers: string[] = [];
-
-                for (let i = 0; i < Math.min(jsonData.length, 10); i++) {
-                    const row = jsonData[i].map(c => String(c).trim().toLowerCase());
-                    if (row.some(c => c.includes('vessel') || c.includes('tên tàu') || c.includes('hãng'))) {
-                        headerRowIndex = i;
-                        headers = row;
-                        break;
-                    }
-                }
-
-                // If no header found, assume row 0 but warn in console
-                if (headers.length === 0) {
-                    console.warn('Could not find header row, assuming row 0');
-                    headers = jsonData[0].map(c => String(c).trim().toLowerCase());
-                }
-
-                const rows = jsonData.slice(headerRowIndex + 1);
-                logger.debug('Detected vessel import headers', headers);
-
-                let successCount = 0;
-                const errors: string[] = [];
-                const importedPeriods = new Set<string>();
-
-                // Map standard headers
-                const valid = (idx: number) => idx !== -1;
-                const findCol = (keywords: string[]) => headers.findIndex(h => keywords.some(k => h.includes(k)));
-
-                const colMap = {
-                    vessel: findCol(['vessel', 'tên tàu', 'ten tau']),
-                    voyage: findCol(['voyage', 'chuyến', 'chuyen']),
-                    line: findCol(['line', 'hãng', 'hang']),
-                    atb: findCol(['atb', 'arrival', 'cập']),
-                    atw: findCol(['atw', 'làm hàng', 'lam hang']),
-                    atc: findCol(['atc', 'hoàn thành', 'hoan thanh']),
-                    atd: findCol(['atd', 'departure', 'rời']),
-                    import: findCol(['import', 'nhập', 'nhap', 'discharge']),
-                    export: findCol(['export', 'xuất', 'xuat', 'loading']),
-                    shift: findCol(['shift', 'di chuyển']),
-                    shiftIn: findCol(['shift in']),
-                    shiftOut: findCol(['shift out']),
-                    teus: findCol(['teu']),
-                    remark: findCol(['remark', 'ghi chú', 'ghi chu', 'note']),
-                    date: findCol(['date', 'ngày', 'ngay']) // Backup date column
+                const raw: Omit<VesselData, 'id'> = {
+                    stt: row.stt,
+                    vessel_name: row.vessel_name,
+                    voyage: row.voyage,
+                    shipping_line: row.shipping_line,
+                    atb: row.atb,
+                    atw: row.atw,
+                    atc: row.atc,
+                    atd: row.atd,
+                    date: row.date,
+                    day: row.day,
+                    month: row.month,
+                    year: row.year,
+                    nhap_tau: row.nhap_tau,
+                    xuat_tau: row.xuat_tau,
+                    shift_in: row.shift_in,
+                    shift_out: row.shift_out,
+                    total_moves: row.nhap_tau + row.xuat_tau + row.shift_in + row.shift_out,
+                    teus: row.teus ?? 0,
+                    created_at: new Date(),
+                    updated_at: new Date(),
                 };
 
-                // Helper to ensure number, fallback to 0
-                const num = (val: unknown) => {
-                    if (val === undefined || val === null || val === '') return 0;
-                    const n = Number(val);
-                    return isNaN(n) ? 0 : n;
+                // Compute productivity metrics (moves_per_hour = total / (ATC-ATW))
+                const metrics = calculateProductivity(raw);
+                const vesselData: Omit<VesselData, 'id'> = {
+                    ...raw,
+                    moves_per_hour: metrics.moves_per_hour,
+                    teus_per_hour: metrics.teus_per_hour,
+                    working_hours: metrics.working_hours,
+                    berth_hours: metrics.berth_hours,
                 };
 
-                for (let i = 0; i < rows.length; i++) {
-                    const row = rows[i];
-                    if (!row || row.length === 0) continue;
-
-                    // Skip empty rows (require Vessel Name or ATB or Voyage)
-                    if (!valid(colMap.vessel) && !valid(colMap.atb) && !valid(colMap.voyage)) continue;
-                    if (valid(colMap.vessel) && !row[colMap.vessel]) continue;
-
-                    try {
-                        // Calculate shifts
-                        let sIn = 0;
-                        let sOut = 0;
-
-                        if (valid(colMap.shiftIn) && row[colMap.shiftIn] !== undefined) {
-                            sIn = num(row[colMap.shiftIn]);
-                        } else if (valid(colMap.shift) && row[colMap.shift] !== undefined) {
-                            sIn = num(row[colMap.shift]) / 2;
-                        }
-
-                        if (valid(colMap.shiftOut) && row[colMap.shiftOut] !== undefined) {
-                            sOut = num(row[colMap.shiftOut]);
-                        } else if (valid(colMap.shift) && row[colMap.shift] !== undefined) {
-                            sOut = num(row[colMap.shift]) / 2;
-                        }
-
-                        // Parse Dates
-                        const atb = valid(colMap.atb) ? parseExcelDate(row[colMap.atb]) : undefined;
-                        const atw = valid(colMap.atw) ? parseExcelDate(row[colMap.atw]) : undefined;
-                        const atc = valid(colMap.atc) ? parseExcelDate(row[colMap.atc]) : undefined;
-                        const atd = valid(colMap.atd) ? parseExcelDate(row[colMap.atd]) : undefined;
-
-                        // Fallback Date Logic
-                        // If ATB missing, try to use 'date' column, or today
-                        let baseDate = new Date();
-                        if (atb) baseDate = new Date(atb);
-                        else if (valid(colMap.date)) {
-                            const d = parseExcelDate(row[colMap.date]);
-                            if (d) baseDate = new Date(d);
-                        }
-
-                        // Collect Period
-                        const m = baseDate.getMonth() + 1;
-                        const y = baseDate.getFullYear();
-                        importedPeriods.add(`${m}/${y}`);
-
-                        const vesselData: VesselData = {
-                            date: '', // Will be set in saveVesselReport based on ATB or logic below
-                            year: 0,
-                            month: 0,
-                            day: 0,
-                            vessel_name: valid(colMap.vessel) ? String(row[colMap.vessel] ?? '') : 'Unknown',
-                            voyage: valid(colMap.voyage) ? String(row[colMap.voyage] ?? '') : '',
-                            shipping_line: valid(colMap.line) ? String(row[colMap.line] ?? '') : '',
-
-                            atb, atw, atc, atd,
-
-                            nhap_tau: valid(colMap.import) ? num(row[colMap.import]) : 0,
-                            xuat_tau: valid(colMap.export) ? num(row[colMap.export]) : 0,
-                            shift_in: sIn,
-                            shift_out: sOut,
-
-                            total_moves: 0, // Recalculated below
-                            teus: valid(colMap.teus) ? num(row[colMap.teus]) : 0,
-                            remark: valid(colMap.remark) ? String(row[colMap.remark] ?? '') : '',
-
-                            created_at: new Date(),
-                            updated_at: new Date()
-                        };
-
-                        // Recalculate total_moves explicitly before saving to be safe
-                        // vesselData.total_moves -> Note: saveVesselReport will auto-calculate this via calculateProductivity
-
-                        // Ensure saveVesselReport uses our discovered date if ATB is missing
-                        vesselData.date = baseDate.toISOString().split('T')[0];
-
-                        // Prevent Duplicates: Check if record exists
-                        // Criteria: Same Vessel Name AND Same Voyage (if exists) OR Same ATB (if exists)
-                        // If duplicates found, update existing ID
-                        let existingItem;
-                        const vVoyage = vesselData.voyage?.toLowerCase();
-
-                        // Query all potentially matching vessels by name first (fastest index)
-                        const candidates = await db.vessel_data.where('vessel_name').equals(vesselData.vessel_name || '').toArray();
-
-                        // Refine match
-                        // 1. By Voyage if available
-                        if (vVoyage) {
-                            existingItem = candidates.find(c => c.voyage?.toLowerCase() === vVoyage);
-                        }
-                        // 2. Fallback by ATB if no voyage or no match by voyage
-                        if (!existingItem && vesselData.atb) {
-                            existingItem = candidates.find(c => c.atb === vesselData.atb);
-                        }
-
-                        if (existingItem) {
-                            vesselData.id = existingItem.id; // Update existing
-                        }
-
-                        await saveVesselReport(vesselData);
-                        successCount++;
-                    } catch (err) {
-                        errors.push(`Row ${i + headerRowIndex + 2}: ${err}`);
-                    }
+                if (existing?.id) {
+                    await db.vessel_data.put({ ...vesselData, id: existing.id, updated_at: new Date() });
+                    updated++;
+                } else {
+                    await db.vessel_data.add(vesselData);
+                    imported++;
                 }
-
-                resolve({ count: successCount, errors, periods: Array.from(importedPeriods) });
-            } catch (error) {
-                reject(error);
+            } catch (err) {
+                errors.push(`${row.vessel_name} ${row.date}: ${err}`);
             }
-        };
-        reader.onerror = (error) => reject(error);
-        reader.readAsArrayBuffer(file);
-    });
-}
-
-// Helper to parse dates from Excel (which can be strings or serial numbers)
-function parseExcelDate(value: unknown): string | undefined {
-    if (!value) return undefined;
-
-    // 0. If it's already a Date object (thanks to cellDates: true)
-    if (value instanceof Date) {
-        if (isNaN(value.getTime())) return undefined;
-        // Convert to local ISO string YYYY-MM-DDTHH:mm:ss
-        const offset = value.getTimezoneOffset() * 60000;
-        const localISOTime = (new Date(value.getTime() - offset)).toISOString().slice(0, -1);
-        return localISOTime.split('.')[0];
-    }
-
-    // 1. If it's a number (Excel serial date) - Fallback
-    if (typeof value === 'number') {
-        const date = XLSX.SSF.parse_date_code(value);
-        if (date) {
-            const p = (n: number) => n.toString().padStart(2, '0');
-            const year = date.y < 100 ? date.y + 2000 : date.y;
-            return `${year}-${p(date.m)}-${p(date.d)}T${p(date.H)}:${p(date.M)}:${p(date.S)}`;
-        }
-    }
-
-    // 2. If it's a string
-    if (typeof value === 'string') {
-        const textStr = value.trim();
-        if (!textStr) return undefined;
-
-        // Try YYYY-MM-DD
-        if (textStr.match(/^\d{4}-\d{2}-\d{2}/)) {
-            const date = new Date(textStr);
-            if (!isNaN(date.getTime())) return date.toISOString().split('.')[0];
         }
 
-        // Try DD/MM/YYYY
-        const dmyMatch = textStr.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})\s*(\d{1,2})?:?(\d{1,2})?:?(\d{1,2})?/);
-        if (dmyMatch) {
-            const day = dmyMatch[1].padStart(2, '0');
-            const mont = dmyMatch[2].padStart(2, '0');
-            const year = dmyMatch[3];
-            const hour = (dmyMatch[4] || '00').padStart(2, '0');
-            const min = (dmyMatch[5] || '00').padStart(2, '0');
-            const sec = (dmyMatch[6] || '00').padStart(2, '0');
-            return `${year}-${mont}-${day}T${hour}:${min}:${sec}`;
+        // Populate vessels master list with unique names
+        const uniqueNames = [...new Set(
+            parsedData.map(d => d.vessel_name).filter((n): n is string => Boolean(n))
+        )];
+        for (const name of uniqueNames) {
+            const exists = await db.vessels.where('name').equals(name).count();
+            if (!exists) {
+                await db.vessels.add({ name, active: true });
+            }
         }
-    }
 
-    return undefined;
+        const periods = Array.from(
+            new Set(parsedData.map(d => `${d.month}/${d.year}`))
+        ).sort((a, b) => {
+            const [am, ay] = a.split('/').map(Number);
+            const [bm, by] = b.split('/').map(Number);
+            return ay !== by ? ay - by : am - bm;
+        });
+
+        return { count: imported + updated, errors, periods };
+    } catch (error) {
+        logger.error('importVesselReportsFromExcel failed', error);
+        throw error;
+    }
 }

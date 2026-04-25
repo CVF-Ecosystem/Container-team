@@ -264,7 +264,7 @@ export default function AdminDataPage() {
             <div className="cvf-card rounded-xl p-6">
                 <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4 flex items-center gap-2">
                     <RefreshCw className="h-4 w-4 text-[var(--color-accent)]" aria-hidden="true" />
-                    Trạng Thái Đồng Bộ
+                    Trạng thái
                 </h2>
 
                 {/* Status row */}
@@ -372,7 +372,7 @@ export default function AdminDataPage() {
             <div className="cvf-card rounded-xl p-6">
                 <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4 flex items-center gap-2">
                     <Database className="h-4 w-4 text-[var(--color-info)]" aria-hidden="true" />
-                    Trạng Thái Database
+                    Database
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <DbStatusCard />
@@ -409,7 +409,7 @@ export default function AdminDataPage() {
             <div className="cvf-card rounded-xl p-6">
                 <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4 flex items-center gap-2">
                     <Download className="h-4 w-4 text-[var(--color-success)]" aria-hidden="true" />
-                    Sao Lưu & Phục Hồi
+                    Sao lưu & Phục hồi
                 </h2>
 
                 {importMessage && (
@@ -621,16 +621,16 @@ export default function AdminDataPage() {
             <div className="cvf-card rounded-xl p-6">
                 <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4 flex items-center gap-2">
                     <Ship className="h-4 w-4 text-[var(--color-warning)]" aria-hidden="true" />
-                    Dữ Liệu Tàu
+                    Dữ liệu tàu 
                 </h2>
                 <div className="flex items-center justify-between p-4 bg-[var(--color-elevated)]/40 rounded-lg border border-[var(--color-border)]">
                     <div>
                         <p className="text-sm font-medium text-[var(--color-text-primary)]">
-                            Báo cáo tàu (vessel_data)
+                            Vessel_data
                         </p>
                         <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                             {vesselCount === null ? 'Đang đếm...' : `${vesselCount} bản ghi`}
-                            {' — '}import từ trang Báo cáo tàu, xóa để re-import lại từ đầu
+                            {' — '}import file Báo cáo tàu
                         </p>
                     </div>
                     <button
@@ -652,16 +652,16 @@ export default function AdminDataPage() {
             <div className="cvf-card rounded-xl p-6">
                 <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4 flex items-center gap-2">
                     <Package className="h-4 w-4 text-[var(--color-info)]" aria-hidden="true" />
-                    Tồn Bãi Container
+                    Tồn bãi 
                 </h2>
                 <div className="flex items-center justify-between p-4 bg-[var(--color-elevated)]/40 rounded-lg border border-[var(--color-border)]">
                     <div>
                         <p className="text-sm font-medium text-[var(--color-text-primary)]">
-                            Snapshot tồn bãi (inventory_snapshots)
+                            Inventory_daily data
                         </p>
                         <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                             {snapshotCount === null ? 'Đang đếm...' : `${snapshotCount} bản ghi`}
-                            {' — '}import từ trang Tồn bãi container, xóa để re-import lại
+                            {' — '}import file Tồn bãi container
                         </p>
                     </div>
                     <button
@@ -683,17 +683,17 @@ export default function AdminDataPage() {
             <div className="cvf-card rounded-xl p-6">
                 <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4 flex items-center gap-2">
                     <Info className="h-4 w-4 text-[var(--color-text-muted)]" aria-hidden="true" />
-                    Hướng Dẫn Sử Dụng
+                    Hướng dẫn sử dụng
                 </h2>
                 <div className="space-y-4 text-sm">
                     {[
                         {
                             title: '1. Upload dữ liệu mới',
-                            body: 'Click "Upload Excel" và chọn file. Hệ thống tự động nhận diện loại file (ngày hoặc lũy tiến) và import vào IndexedDB.',
+                            body: 'Click "Upload Excel" và chọn file.',
                         },
                         {
                             title: '2. Sao lưu dữ liệu',
-                            body: 'Dùng Export JSON để backup toàn bộ. File này có thể import lại sau. Export Excel cho phép xem và chỉnh sửa dữ liệu.',
+                            body: 'Dùng Export JSON để backup toàn bộ. Export Excel cho phép xem và chỉnh sửa dữ liệu.',
                         },
                         {
                             title: '3. Phục hồi dữ liệu',
