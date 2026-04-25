@@ -2,12 +2,11 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createRequire } from "node:module";
-
-const _require = createRequire(import.meta.url);
 
 const appDir = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(appDir, "../..");
+const xlsxShim = "./src/lib/vendor/xlsx";
+const xlsxShimPath = resolve(appDir, "src/lib/vendor/xlsx.ts");
 
 // Security headers for production hardening
 const securityHeaders = [
@@ -54,21 +53,23 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   turbopack: {
     root: workspaceRoot,
+    resolveAlias: {
+      "@e965/xlsx": xlsxShim,
+    },
   },
 
   webpack: (config) => {
     // @e965/xlsx has "sideEffects":false + ESM entry (xlsx.mjs). Webpack 5 tree-shakes
     // away var declarations the library still references at runtime → "r is not defined".
     //
-    // Fix A: alias to CJS entry (xlsx.js). _require.resolve follows Node module resolution
-    //   so it works regardless of whether the package is hoisted in a monorepo.
-    // Fix B: mark the xlsx subtree as having side effects to stop any residual tree-shaking.
-    try {
-      config.resolve.alias["@e965/xlsx"] = _require.resolve("@e965/xlsx/xlsx.js");
-    } catch {
-      // Fallback to relative path if subpath resolve fails
-      config.resolve.alias["@e965/xlsx"] = resolve(appDir, "node_modules/@e965/xlsx/xlsx.js");
-    }
+    // Alias package imports to a local shim that loads the browser full build and re-exports
+    // the app-facing API. The shim keeps Turbopack and webpack off the fragile ESM entry.
+    // The rule below also marks the xlsx subtree as having side effects for webpack builds.
+    config.resolve ??= {};
+    config.resolve.alias = {
+      ...(config.resolve.alias ?? {}),
+      "@e965/xlsx$": xlsxShimPath,
+    };
     config.module.rules.push({
       test: /node_modules[\\/]@e965[\\/]xlsx[\\/]/,
       sideEffects: true,
