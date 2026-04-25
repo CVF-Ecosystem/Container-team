@@ -30,6 +30,8 @@ export default function InventoryPage() {
 
   const [snapshots, setSnapshots] = useState<{ ton_cu?: InventorySnapshot; ton_moi?: InventorySnapshot }>({});
   const [snapshotMessage, setSnapshotMessage] = useState("");
+  const [tonCuDate, setTonCuDate] = useState(new Date().toISOString().split("T")[0]);
+  const [tonMoiDate, setTonMoiDate] = useState(new Date().toISOString().split("T")[0]);
   const tonCuRef = useRef<HTMLInputElement>(null);
   const tonMoiRef = useRef<HTMLInputElement>(null);
 
@@ -62,9 +64,9 @@ export default function InventoryPage() {
   }, [selectedYear, selectedMonth]);
 
   const loadSnapshots = useCallback(async () => {
-    const s = await getInventorySnapshots();
+    const s = await getInventorySnapshots(selectedYear, selectedMonth);
     setSnapshots(s);
-  }, []);
+  }, [selectedYear, selectedMonth]);
 
   useEffect(() => { loadSettings(); }, [loadSettings]);
   useEffect(() => { loadInventory(); }, [loadInventory, settings]);
@@ -86,8 +88,9 @@ export default function InventoryPage() {
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const date = type === "ton_cu" ? tonCuDate : tonMoiDate;
     setSnapshotMessage("Đang import...");
-    const result = await importInventorySnapshot(file, type);
+    const result = await importInventorySnapshot(file, type, date);
     setSnapshotMessage(result.message);
     if (result.success) await loadSnapshots();
     e.target.value = "";
@@ -217,25 +220,43 @@ export default function InventoryPage() {
       <div className="cvf-card rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Tồn Bãi Container</h2>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             <input type="file" ref={tonCuRef} accept=".xlsx,.xls" onChange={(e) => handleSnapshotImport(e, "ton_cu")} className="hidden" />
             <input type="file" ref={tonMoiRef} accept=".xlsx,.xls" onChange={(e) => handleSnapshotImport(e, "ton_moi")} className="hidden" />
-            <button
-              type="button"
-              onClick={() => tonCuRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-            >
-              <Upload className="h-3.5 w-3.5" aria-hidden="true" />
-              Import Tồn Cũ
-            </button>
-            <button
-              type="button"
-              onClick={() => tonMoiRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-[var(--color-accent)]/40 text-[var(--color-accent)] hover:bg-[var(--color-accent-dim)] transition-colors"
-            >
-              <Upload className="h-3.5 w-3.5" aria-hidden="true" />
-              Import Tồn Mới
-            </button>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                title="Ngày lấy Tồn Cũ"
+                value={tonCuDate}
+                onChange={(e) => setTonCuDate(e.target.value)}
+                className="cvf-input rounded-lg px-2 py-1.5 text-xs w-32"
+              />
+              <button
+                type="button"
+                onClick={() => tonCuRef.current?.click()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+              >
+                <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+                Import Tồn Cũ
+              </button>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                title="Ngày lấy Tồn Mới"
+                value={tonMoiDate}
+                onChange={(e) => setTonMoiDate(e.target.value)}
+                className="cvf-input rounded-lg px-2 py-1.5 text-xs w-32"
+              />
+              <button
+                type="button"
+                onClick={() => tonMoiRef.current?.click()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-[var(--color-accent)]/40 text-[var(--color-accent)] hover:bg-[var(--color-accent-dim)] transition-colors"
+              >
+                <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+                Import Tồn Mới
+              </button>
+            </div>
           </div>
         </div>
 
@@ -305,7 +326,7 @@ export default function InventoryPage() {
         <div>
           <label className="block text-xs text-[var(--color-text-secondary)] mb-1.5">Năm</label>
           <select title="Chọn năm" value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="cvf-input w-28 rounded-lg px-3 py-2 text-sm">
-            {(availableYears || [getCurrentYear()]).map((year) => (
+            {(availableYears && availableYears.length > 0 ? availableYears : [getCurrentYear()]).map((year) => (
               <option key={year} value={year}>{year}</option>
             ))}
           </select>

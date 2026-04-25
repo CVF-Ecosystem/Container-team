@@ -207,6 +207,10 @@ export interface InventorySnapshot {
     id?: number;
     type: 'ton_cu' | 'ton_moi';  // TON CU = tồn cũ, TON MOI = tồn mới
     filename?: string;
+    date: string;        // YYYY-MM-DD (ngày lấy tồn)
+    year: number;
+    month: number;
+    day: number;
     total: number;
     cont_20: number;     // 20' containers
     cont_40: number;     // 40'+ containers
@@ -303,7 +307,7 @@ export class ContainerDB extends Dexie {
             sync_queue: '++id, table_name, synced, timestamp'
         });
 
-        // Version 6: Inventory Snapshots (TON CU / TON MOI)
+        // Version 6: Inventory Snapshots (TON CU / TON MOI) — unique per type
         this.version(6).stores({
             daily_data: '++id, date, year, month, day, [year+month], [year+month+day]',
             monthly_summary: '++id, year, month, quarter, [year+month], [year+quarter]',
@@ -315,6 +319,31 @@ export class ContainerDB extends Dexie {
             employees: '++id, &mscd, department, shift, [department+shift], active',
             vessels: '++id, &name, active',
             sync_queue: '++id, table_name, synced, timestamp'
+        });
+
+        // Version 7: Snapshots stored per date (one per type per month)
+        this.version(7).stores({
+            daily_data: '++id, date, year, month, day, [year+month], [year+month+day]',
+            monthly_summary: '++id, year, month, quarter, [year+month], [year+quarter]',
+            yearly_summary: '++id, &year',
+            metadata: '&key',
+            vessel_data: '++id, date, year, month, day, [year+month], [year+month+day], shipping_line, vessel_name',
+            inventory_settings: '++id',
+            inventory_snapshots: '++id, type, [type+year+month], year, [year+month]',
+            employees: '++id, &mscd, department, shift, [department+shift], active',
+            vessels: '++id, &name, active',
+            sync_queue: '++id, table_name, synced, timestamp'
+        }).upgrade(async tx => {
+            // Populate date/year/month/day on existing v6 records
+            await tx.table('inventory_snapshots').toCollection().modify((s) => {
+                if (!s.year) {
+                    const d = s.imported_at ? new Date(s.imported_at) : new Date();
+                    s.date = d.toISOString().split('T')[0];
+                    s.year = d.getFullYear();
+                    s.month = d.getMonth() + 1;
+                    s.day = d.getDate();
+                }
+            });
         });
     }
 }
