@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+
+const _require = createRequire(import.meta.url);
 
 const appDir = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(appDir, "../..");
@@ -54,11 +57,22 @@ const nextConfig: NextConfig = {
   },
 
   webpack: (config) => {
-    // @e965/xlsx (SheetJS fork) uses var-based module-scope declarations that
-    // webpack tree-shakes away when it processes the .mjs entry, causing
-    // "ReferenceError: r is not defined" at runtime in production builds.
-    // Forcing the CJS entry (xlsx.js) sidesteps the issue.
-    config.resolve.alias["@e965/xlsx"] = resolve(appDir, "node_modules/@e965/xlsx/xlsx.js");
+    // @e965/xlsx has "sideEffects":false + ESM entry (xlsx.mjs). Webpack 5 tree-shakes
+    // away var declarations the library still references at runtime → "r is not defined".
+    //
+    // Fix A: alias to CJS entry (xlsx.js). _require.resolve follows Node module resolution
+    //   so it works regardless of whether the package is hoisted in a monorepo.
+    // Fix B: mark the xlsx subtree as having side effects to stop any residual tree-shaking.
+    try {
+      config.resolve.alias["@e965/xlsx"] = _require.resolve("@e965/xlsx/xlsx.js");
+    } catch {
+      // Fallback to relative path if subpath resolve fails
+      config.resolve.alias["@e965/xlsx"] = resolve(appDir, "node_modules/@e965/xlsx/xlsx.js");
+    }
+    config.module.rules.push({
+      test: /node_modules[\\/]@e965[\\/]xlsx[\\/]/,
+      sideEffects: true,
+    });
     return config;
   },
 
