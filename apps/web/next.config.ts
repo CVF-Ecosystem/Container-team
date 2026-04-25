@@ -38,10 +38,8 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      // Allow API connections: use NEXT_PUBLIC_API_URL in production, fallback to localhost in dev
-      process.env.NEXT_PUBLIC_API_URL
-        ? `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL}`
-        : "connect-src 'self' http://localhost:3001 https://localhost:3001",
+      // Mainline app traffic is API-first; legacy Supabase paths are not part of the CSP baseline.
+      "connect-src 'self' http://localhost:3001 https://localhost:3001",
       "worker-src 'self' blob:",
       "frame-ancestors 'none'",
       "base-uri 'self'",
@@ -53,6 +51,15 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   turbopack: {
     root: workspaceRoot,
+  },
+
+  webpack: (config) => {
+    // @e965/xlsx (SheetJS fork) uses var-based module-scope declarations that
+    // webpack tree-shakes away when it processes the .mjs entry, causing
+    // "ReferenceError: r is not defined" at runtime in production builds.
+    // Forcing the CJS entry (xlsx.js) sidesteps the issue.
+    config.resolve.alias["@e965/xlsx"] = resolve(appDir, "node_modules/@e965/xlsx/xlsx.js");
+    return config;
   },
 
   // Remove X-Powered-By header to avoid fingerprinting
