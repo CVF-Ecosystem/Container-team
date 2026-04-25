@@ -277,18 +277,12 @@ export default function InventoryPage() {
                       <ArrowDownToLine className="h-3 w-3" aria-hidden="true" />
                       Tồn Cũ
                     </div>
-                    {snapshots.ton_cu?.filename && (
-                      <div className="text-[10px] font-normal text-[var(--color-text-muted)] truncate max-w-28">{snapshots.ton_cu.filename}</div>
-                    )}
                   </th>
                   <th className="py-2 px-4 text-right text-xs font-semibold text-[var(--color-accent)]">
                     <div className="flex items-center justify-end gap-1">
                       <ArrowUpFromLine className="h-3 w-3" aria-hidden="true" />
                       Tồn Mới
                     </div>
-                    {snapshots.ton_moi?.filename && (
-                      <div className="text-[10px] font-normal text-[var(--color-text-muted)] truncate max-w-28">{snapshots.ton_moi.filename}</div>
-                    )}
                   </th>
                   <th className="py-2 px-4 text-right text-xs font-semibold text-[var(--color-text-muted)]">+/−</th>
                 </tr>
