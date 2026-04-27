@@ -1,18 +1,20 @@
 "use client";
 
 import {
+  Anchor,
   BarChart3,
   BookOpen,
-  Building2,
   CalendarCheck,
   ClipboardList,
   Database,
   LogOut,
+  Menu,
   Package,
   Settings,
   ShieldCheck,
   Ship,
   Umbrella,
+  User,
   Users,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -21,6 +23,8 @@ import NavItem from "./NavItem";
 
 interface AppSidebarProps {
   onNavigate?: () => void;
+  collapsed?: boolean;
+  onToggle?: () => void;
 }
 
 const groups = [
@@ -46,9 +50,7 @@ const groups = [
   },
   {
     label: "Sổ giao ca",
-    items: [
-      { href: "/shift-log/thu-tuc", label: "Thủ tục", icon: BookOpen },
-    ],
+    items: [{ href: "/shift-log/thu-tuc", label: "Thủ tục", icon: BookOpen }],
   },
 ];
 
@@ -58,41 +60,58 @@ const adminItems = [
   { href: "/admin/personnel", label: "Nhân sự & tàu", icon: Users },
 ];
 
-export default function AppSidebar({ onNavigate }: AppSidebarProps) {
+export default function AppSidebar({
+  onNavigate,
+  collapsed = false,
+  onToggle,
+}: AppSidebarProps) {
   const pathname = usePathname();
   const { session, isAdmin, logout } = useAuth();
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === href : pathname?.startsWith(href);
 
+  const widthClass = collapsed ? "w-16" : "w-60";
+
   return (
-    <aside className="flex h-full w-72 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)]/95">
-      <div className="flex items-center gap-3 border-b border-[var(--color-border)] px-5 py-5">
-        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--color-accent-dim)] text-[var(--color-accent-hover)] ring-1 ring-[var(--color-border-strong)]">
-          <Building2 className="h-6 w-6" aria-hidden="true" />
+    <aside
+      className={`flex h-full flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)]/95 transition-[width] duration-200 ${widthClass}`}
+    >
+      {/* Brand */}
+      <div
+        className={`flex items-center gap-3 border-b border-[var(--color-border)] ${collapsed ? "justify-center px-3 py-4" : "px-4 py-4"}`}
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--color-border-strong)] bg-gradient-to-br from-[var(--color-elevated)] to-[#1e4a7a]">
+          <Anchor className="h-4 w-4 text-[var(--color-accent)]" aria-hidden="true" />
         </div>
-        <div>
-          <p className="text-sm font-bold uppercase tracking-wide text-[var(--color-text-primary)]">
-            Cảng Tân Thuận
-          </p>
-          <p className="text-xs text-[var(--color-text-secondary)]">
-            Đội Container
-          </p>
-        </div>
+        {!collapsed && (
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-[var(--color-text-primary)]">
+              Cảng Tân Thuận
+            </p>
+            <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+              Điều hành Cảng
+            </p>
+          </div>
+        )}
       </div>
 
-      <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
+      {/* Nav */}
+      <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3">
         {groups.map((group) => (
           <div key={group.label}>
-            <p className="px-3 pb-2 text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-              {group.label}
-            </p>
-            <div className="space-y-1">
+            {!collapsed && (
+              <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                {group.label}
+              </p>
+            )}
+            <div className="space-y-0.5">
               {group.items.map((item) => (
                 <NavItem
                   key={item.href}
                   {...item}
-                  active={isActive(item.href)}
+                  active={!!isActive(item.href)}
+                  collapsed={collapsed}
                   onClick={onNavigate}
                 />
               ))}
@@ -102,15 +121,18 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
 
         {isAdmin && (
           <div>
-            <p className="px-3 pb-2 text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-              Admin
-            </p>
-            <div className="space-y-1">
+            {!collapsed && (
+              <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                Admin
+              </p>
+            )}
+            <div className="space-y-0.5">
               {adminItems.map((item) => (
                 <NavItem
                   key={item.href}
                   {...item}
-                  active={isActive(item.href)}
+                  active={!!isActive(item.href)}
+                  collapsed={collapsed}
                   onClick={onNavigate}
                 />
               ))}
@@ -119,35 +141,62 @@ export default function AppSidebar({ onNavigate }: AppSidebarProps) {
         )}
 
         <div>
-          <p className="px-3 pb-2 text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-            Hệ thống
-          </p>
+          {!collapsed && (
+            <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+              Hệ thống
+            </p>
+          )}
           <NavItem
             href="/settings"
             label="Cài đặt"
             icon={Settings}
-            active={isActive("/settings")}
+            active={!!isActive("/settings")}
+            collapsed={collapsed}
             onClick={onNavigate}
           />
         </div>
       </nav>
 
-      <div className="border-t border-[var(--color-border)] p-4">
-        <div className="mb-3 rounded-lg bg-[var(--color-bg)]/60 p-3">
-          <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
-            {session?.name || session?.username || "Người dùng"}
-          </p>
-          <p className="text-xs uppercase text-[var(--color-text-secondary)]">
-            {session?.role === "admin" ? "Admin" : "User"}
-          </p>
-        </div>
+      {/* Footer: user + collapse + logout */}
+      <div className="border-t border-[var(--color-border)] p-2">
+        {!collapsed && (
+          <div className="mb-2 flex items-center gap-3 rounded-lg px-2 py-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--color-border-strong)] bg-[var(--color-elevated)]">
+              <User className="h-4 w-4 text-[var(--color-accent)]" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold text-[var(--color-text-primary)]">
+                {session?.name || session?.username || "Người dùng"}
+              </p>
+              <p className="text-[10px] uppercase text-[var(--color-text-muted)]">
+                {session?.role === "admin" ? "Admin" : "User"}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {onToggle && (
+          <button
+            type="button"
+            onClick={onToggle}
+            title={collapsed ? "Mở rộng" : "Thu gọn"}
+            aria-label={collapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
+            className={`mb-1 flex w-full items-center gap-2 rounded-lg ${collapsed ? "justify-center px-2 py-2" : "px-3 py-2"} text-xs text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-elevated)] hover:text-[var(--color-text-primary)]`}
+          >
+            <Menu className="h-4 w-4 shrink-0" aria-hidden="true" />
+            {!collapsed && <span>Thu gọn</span>}
+          </button>
+        )}
+
         <button
           type="button"
           onClick={logout}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-danger)] hover:text-[var(--color-text-primary)]"
+          title="Đăng xuất"
+          aria-label="Đăng xuất"
+          className={`flex w-full items-center gap-2 rounded-lg ${collapsed ? "justify-center px-2 py-2" : "px-3 py-2"} text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[rgba(244,63,94,0.10)] hover:text-rose-300`}
         >
-          <LogOut className="h-4 w-4" aria-hidden="true" />
-          Đăng xuất
+          <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
+          {!collapsed && <span>Đăng xuất</span>}
         </button>
       </div>
     </aside>

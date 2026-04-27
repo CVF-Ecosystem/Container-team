@@ -78,6 +78,29 @@ body {
   transition: background-color 9999s ease-in-out 0s;
 }
 
+/* Login page decorative layers */
+.cvf-login-glow {
+  background: radial-gradient(ellipse, rgba(14, 165, 233, 0.10) 0%, transparent 70%);
+}
+
+.cvf-login-brand {
+  background: linear-gradient(135deg, var(--color-elevated), #1e4a7a);
+  box-shadow: 0 0 30px rgba(14, 165, 233, 0.15);
+}
+
+.cvf-login-card {
+  background: rgba(15, 40, 71, 0.85);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+}
+
+.cvf-login-submit {
+  background: linear-gradient(135deg, var(--color-accent), #0284c7);
+}
+
+.cvf-login-submit:disabled {
+  background: var(--color-elevated);
+}
+
 /* Print Styles */
 @media print {
   /* Override all design tokens to white-on-black for print */
