@@ -94,7 +94,7 @@ export default function LeaveReportPage() {
   const isFormValid = selectedNhanVien && selectedCa && lyDoNghi;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5 pb-10">
+    <div className="space-y-5 pb-10">
       {/* Stats placeholder — to be wired to real data later */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <KPICard

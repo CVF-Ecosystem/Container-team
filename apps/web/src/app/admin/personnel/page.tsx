@@ -281,7 +281,7 @@ export default function PersonnelAdminPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-5">
+    <div className="space-y-5">
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[var(--color-border)]">

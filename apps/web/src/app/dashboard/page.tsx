@@ -722,7 +722,7 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div className="max-w-7xl mx-auto">
+      <div>
         <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-medium text-[var(--color-text-secondary)]">

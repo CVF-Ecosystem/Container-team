@@ -114,7 +114,7 @@ export default function HistoryPage() {
   const formatDateTime = (dateStr: string) => new Date(dateStr).toLocaleString("vi-VN");
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
+    <div className="space-y-5">
       {/* Stats KPI row */}
       {stats && (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-5">

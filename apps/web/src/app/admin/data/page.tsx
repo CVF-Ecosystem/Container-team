@@ -258,7 +258,7 @@ export default function AdminDataPage() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="space-y-6">
 
             {/* Sync Queue Monitor */}
             <div className="cvf-card rounded-xl p-6">

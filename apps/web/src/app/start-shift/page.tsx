@@ -143,7 +143,7 @@ export default function StartShiftReportPage() {
   const tallyVesselCount = tallyAssignments.filter((t) => t.vesselId > 0).length;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5 pb-24">
+    <div className="space-y-5 pb-24">
       {/* Session info */}
       <Card>
         <div className="mb-4 flex items-center gap-2">

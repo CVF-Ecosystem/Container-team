@@ -225,7 +225,7 @@ export default function ShiftLogThuTucPage() {
     };
 
     return (
-        <div className="max-w-5xl mx-auto space-y-5">
+        <div className="space-y-5">
             <div className="cvf-card rounded-xl p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <div>

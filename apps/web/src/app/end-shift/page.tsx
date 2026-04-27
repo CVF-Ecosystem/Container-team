@@ -102,7 +102,7 @@ export default function EndShiftReportPage() {
   ).length;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5 pb-24">
+    <div className="space-y-5 pb-24">
       {/* Time + shift */}
       <Card>
         <div className="mb-4 flex items-center gap-2">

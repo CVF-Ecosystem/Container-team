@@ -98,7 +98,7 @@ export default function SettingsPage() {
     (session?.name || session?.username || "U").trim().split(/\s+/).pop()?.[0] || "U";
 
   return (
-    <div className="mx-auto flex max-w-4xl gap-6">
+    <div className="flex gap-6">
       {/* Vertical tab list */}
       <nav className="hidden w-52 shrink-0 flex-col gap-1 md:flex" aria-label="Cài đặt">
         {TABS.map((t) => {

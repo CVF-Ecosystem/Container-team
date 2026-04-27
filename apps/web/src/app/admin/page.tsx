@@ -378,7 +378,7 @@ export default function AdminDashboardPage() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
+    <div className="space-y-5">
       {/* Tab bar */}
       <div className="inline-flex w-fit gap-0.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1">
         {visibleTabs.map((t) => {

@@ -166,7 +166,7 @@ export default function InventoryPage() {
   }, [snapshots]);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-5">
+    <div className="space-y-5">
 
       {/* Settings panel */}
       <div className="cvf-card rounded-xl p-6">

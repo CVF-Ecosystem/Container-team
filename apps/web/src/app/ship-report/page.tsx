@@ -295,7 +295,7 @@ export default function ShipReportPage() {
 
 
   return (
-    <div className="max-w-7xl mx-auto space-y-5">
+    <div className="space-y-5">
 
       {/* Controls */}
       <div className="cvf-card rounded-xl p-4 flex flex-col lg:flex-row gap-4 items-end justify-between">
