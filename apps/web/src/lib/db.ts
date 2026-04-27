@@ -222,6 +222,32 @@ export interface InventorySnapshot {
     imported_at: Date;
 }
 
+// ============= SHIFT LOG (Sổ giao ca theo bộ phận) =============
+
+export type ShiftLogGroup = 'in_warehouse' | 'outside_warehouse';
+
+export interface ShiftLogItem {
+    id?: number;
+    department: string;          // 'thu_tuc' | 'tong_hop' | 'bai_cont' | 'dieu_hanh'
+    name: string;                // Tên mặt hàng (VD: "GIẤY A4")
+    group: ShiftLogGroup;        // Trong kho / Ngoài kho
+    sort_order: number;          // Thứ tự hiển thị trong nhóm
+    active: boolean;
+    updated_at: Date;
+}
+
+export interface ShiftLogEntry {
+    id?: number;
+    department: string;
+    date: string;                // YYYY-MM-DD
+    shift: string;               // 'Ca 01' | 'Ca 02' | 'Hành chánh'
+    item_id: number;
+    ban_giao: number;            // Số nhận bàn giao đầu ca
+    xuat: number;                // Số xuất trong ca
+    note?: string;
+    updated_at: Date;
+}
+
 // ============= SYNC QUEUE (Persistent offline queue) =============
 
 export interface SyncQueueItem {
@@ -247,6 +273,8 @@ export class ContainerDB extends Dexie {
     employees!: Table<Employee>;
     vessels!: Table<VesselList>;
     sync_queue!: Table<SyncQueueItem>;
+    shift_log_items!: Table<ShiftLogItem>;
+    shift_log_entries!: Table<ShiftLogEntry>;
 
     constructor() {
         super('ContainerDB');
@@ -357,6 +385,22 @@ export class ContainerDB extends Dexie {
             employees: '++id, &mscd, department, shift, [department+shift], active',
             vessels: '++id, &name, active',
             sync_queue: '++id, table_name, synced, timestamp'
+        });
+
+        // Version 9: Shift Log (Sổ giao ca theo bộ phận)
+        this.version(9).stores({
+            daily_data: '++id, date, year, month, day, [year+month], [year+month+day]',
+            monthly_summary: '++id, year, month, quarter, [year+month], [year+quarter]',
+            yearly_summary: '++id, &year',
+            metadata: '&key',
+            vessel_data: '++id, date, year, month, day, [year+month], [year+month+day], shipping_line, vessel_name',
+            inventory_settings: '++id',
+            inventory_snapshots: '++id, type, [type+year+month+day], [type+year+month], year, [year+month], [year+month+day]',
+            employees: '++id, &mscd, department, shift, [department+shift], active',
+            vessels: '++id, &name, active',
+            sync_queue: '++id, table_name, synced, timestamp',
+            shift_log_items: '++id, department, [department+group+sort_order]',
+            shift_log_entries: '++id, [department+date+shift], [department+date+shift+item_id], item_id'
         });
     }
 }

@@ -2,6 +2,7 @@
 
 import {
   BarChart3,
+  BookOpen,
   Building2,
   CalendarCheck,
   ClipboardList,
@@ -41,6 +42,12 @@ const groups = [
       { href: "/history", label: "Lịch sử", icon: ClipboardList },
       { href: "/inventory", label: "Tồn bãi container", icon: Package },
       { href: "/ship-report", label: "Báo cáo tàu", icon: Ship },
+    ],
+  },
+  {
+    label: "Sổ giao ca",
+    items: [
+      { href: "/shift-log/thu-tuc", label: "Thủ tục", icon: BookOpen },
     ],
   },
 ];
