@@ -2,7 +2,20 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ArrowDownToLine, ArrowUpFromLine, Pencil, Save, Upload, X } from "lucide-react";
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  ArrowDown,
+  ArrowUp,
+  Database,
+  Gauge,
+  Package,
+  Pencil,
+  Save,
+  Upload,
+  X,
+} from "lucide-react";
+import { KPICard, type KPITone } from "@/components/cosmic";
 import { db, getCurrentYear, InventorySettings, InventorySnapshot } from "@/lib/db";
 import {
   getInventorySettings,
@@ -114,13 +127,6 @@ export default function InventoryPage() {
     const totalOut = inventoryData.reduce((sum, d) => sum + d.total_out, 0);
     return { latestStock: last.stock_current, capacityPercent: last.capacity_percent, totalIn, totalOut, netChange: totalIn - totalOut };
   }, [inventoryData]);
-
-  const getCapacityBadge = (percent: number) => {
-    if (percent >= 100) return "text-[var(--color-danger)] bg-[var(--color-danger)]/10";
-    if (percent >= 90) return "text-[var(--color-warning)] bg-[var(--color-warning)]/10";
-    if (percent >= 80) return "text-[var(--color-warning)]/70 bg-[var(--color-warning)]/5";
-    return "text-[var(--color-success)] bg-[var(--color-success)]/10";
-  };
 
   const snapshotRows = useMemo(() => {
     const cu = snapshots.ton_cu;
@@ -364,30 +370,44 @@ export default function InventoryPage() {
       {!isLoading && inventoryData.length > 0 && (
         <>
         {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div className={`cvf-card rounded-xl p-4 text-center ${getCapacityBadge(summary.capacityPercent)}`}>
-            <p className="text-xs opacity-80 mb-1">Tồn Hiện Tại</p>
-            <p className="text-2xl font-bold">{summary.latestStock.toLocaleString()}</p>
-            <p className="text-xs mt-1">{summary.capacityPercent}% công suất</p>
-          </div>
-          <div className="cvf-card rounded-xl p-4 text-center">
-            <p className="text-xs text-[var(--color-success)] mb-1">Tổng Vào</p>
-            <p className="text-2xl font-bold text-[var(--color-success)]">+{summary.totalIn.toLocaleString()}</p>
-          </div>
-          <div className="cvf-card rounded-xl p-4 text-center">
-            <p className="text-xs text-[var(--color-danger)] mb-1">Tổng Ra</p>
-            <p className="text-2xl font-bold text-[var(--color-danger)]">-{summary.totalOut.toLocaleString()}</p>
-          </div>
-          <div className="cvf-card rounded-xl p-4 text-center">
-            <p className={`text-xs mb-1 ${summary.netChange >= 0 ? "text-[var(--color-accent)]" : "text-[var(--color-warning)]"}`}>Biến Động</p>
-            <p className={`text-2xl font-bold ${summary.netChange >= 0 ? "text-[var(--color-accent)]" : "text-[var(--color-warning)]"}`}>
-              {summary.netChange >= 0 ? "+" : ""}{summary.netChange.toLocaleString()}
-            </p>
-          </div>
-          <div className="cvf-card rounded-xl p-4 text-center">
-            <p className="text-xs text-[var(--color-info)] mb-1">Công Suất</p>
-            <p className="text-2xl font-bold text-[var(--color-info)]">{settings?.capacity.toLocaleString() || 0}</p>
-          </div>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+          <KPICard
+            icon={Package}
+            label="Tồn Hiện Tại"
+            value={summary.latestStock.toLocaleString()}
+            tone={
+              (summary.capacityPercent >= 90
+                ? "danger"
+                : summary.capacityPercent >= 80
+                  ? "warning"
+                  : "success") as KPITone
+            }
+            hint={`${summary.capacityPercent}% công suất`}
+          />
+          <KPICard
+            icon={ArrowDown}
+            label="Tổng Vào"
+            value={`+${summary.totalIn.toLocaleString()}`}
+            tone="success"
+          />
+          <KPICard
+            icon={ArrowUp}
+            label="Tổng Ra"
+            value={`-${summary.totalOut.toLocaleString()}`}
+            tone="danger"
+          />
+          <KPICard
+            icon={Database}
+            label="Biến Động"
+            value={`${summary.netChange >= 0 ? "+" : ""}${summary.netChange.toLocaleString()}`}
+            tone={summary.netChange >= 0 ? "accent" : "warning"}
+          />
+          <KPICard
+            icon={Gauge}
+            label="Công Suất"
+            value={(settings?.capacity || 0).toLocaleString()}
+            tone="info"
+          />
         </div>
         )}
 

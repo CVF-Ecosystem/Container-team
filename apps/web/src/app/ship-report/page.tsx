@@ -29,6 +29,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { KPICard } from "@/components/cosmic";
 
 const ShipAnalytics = dynamic(
   () => import("@/components/ship-report/ShipAnalytics"),
@@ -292,26 +293,6 @@ export default function ShipReportPage() {
 
   const totalPages = Math.ceil(filteredReports.length / LIST_PAGE_SIZE);
 
-  const kpiCards = [
-    {
-      label: "Tổng Conts",
-      value: stats.totalMoves.toLocaleString(),
-      borderClass: "border-t-[var(--color-info)]",
-      Icon: Ship,
-    },
-    {
-      label: "Tổng TEUs",
-      value: stats.totalTeus.toLocaleString(),
-      borderClass: "border-t-[var(--color-success)]",
-      Icon: Package,
-    },
-    {
-      label: "Năng suất TB (Moves/h)",
-      value: stats.avgMovesPerHour.toFixed(1),
-      borderClass: "border-t-[var(--color-warning)]",
-      Icon: BarChart2,
-    },
-  ];
 
   return (
     <div className="max-w-7xl mx-auto space-y-5">
@@ -436,16 +417,26 @@ export default function ShipReportPage() {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {kpiCards.map((card) => (
-          <div key={card.label} className={`cvf-card rounded-xl p-4 border-t-4 ${card.borderClass}`}>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">{card.label}</p>
-              <card.Icon className="h-4 w-4 text-[var(--color-text-muted)]" aria-hidden="true" />
-            </div>
-            <p className="text-2xl font-bold text-[var(--color-text-primary)]">{card.value}</p>
-          </div>
-        ))}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <KPICard
+          icon={Ship}
+          label="Tổng Conts"
+          value={stats.totalMoves.toLocaleString()}
+          tone="info"
+          hint={`${filteredReports.length} tàu trong T${selectedMonth}/${selectedYear}`}
+        />
+        <KPICard
+          icon={Package}
+          label="Tổng TEUs"
+          value={stats.totalTeus.toLocaleString()}
+          tone="success"
+        />
+        <KPICard
+          icon={BarChart2}
+          label="Năng suất TB (Moves/h)"
+          value={stats.avgMovesPerHour.toFixed(1)}
+          tone="warning"
+        />
       </div>
 
       {/* Content */}
