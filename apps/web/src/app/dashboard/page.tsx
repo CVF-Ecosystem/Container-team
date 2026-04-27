@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { DashboardData, DashboardSummary, PeriodType } from "@/types";
 import KPICards from "@/components/dashboard/KPICards";
+import { KPICard, type KPITone, Button } from "@/components/cosmic";
 import DataTable from "@/components/dashboard/DataTable";
 import { loadFromStorage } from "@/components/dashboard/ExcelParser";
 import DateFilter, { DateFilterValue } from "@/components/dashboard/DateFilter";
@@ -183,34 +184,41 @@ function ExecutiveKpiPanel() {
     );
   }
 
-  const cards = [
+  const cards: {
+    label: string;
+    value: number;
+    suffix?: string;
+    hint: string;
+    Icon: LucideIcon;
+    tone: KPITone;
+  }[] = [
     {
       label: "Sản lượng ngày",
       value: data?.daily.totalMoves ?? 0,
       hint: `Vào ${data?.daily.totalIn ?? 0} / Ra ${data?.daily.totalOut ?? 0}`,
       Icon: BarChart3,
-      color: "text-[var(--color-accent)]",
+      tone: "accent",
     },
     {
       label: "Lũy kế tháng",
       value: data?.monthToDate.totalMoves ?? 0,
       hint: `${data?.monthToDate.reportCount ?? 0} báo cáo đã nộp`,
       Icon: TrendingUp,
-      color: "text-[var(--color-success)]",
+      tone: "success",
     },
     {
       label: "Tàu / TEUs ngày",
       value: data?.daily.vesselMoves ?? 0,
       hint: `${data?.daily.vesselTeus ?? 0} TEUs`,
       Icon: Ship,
-      color: "text-[var(--color-info)]",
+      tone: "info",
     },
     {
       label: "Nhân sự hoạt động",
       value: data?.workforce.activeEmployees ?? 0,
       hint: `${data?.workforce.departments ?? 0} bộ phận / ${data?.workforce.shifts ?? 0} ca`,
       Icon: Users,
-      color: "text-[var(--color-warning)]",
+      tone: "warning",
     },
     {
       label: "Hoàn tất báo cáo",
@@ -218,45 +226,46 @@ function ExecutiveKpiPanel() {
       suffix: "%",
       hint: `${data?.daily.leaveRequests ?? 0} đơn nghỉ phép`,
       Icon: ClipboardCheck,
-      color: "text-green-300",
+      tone: "success",
     },
   ];
 
   return (
     <section className="mb-6">
-      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-[var(--color-text-secondary)]">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
             KPI lãnh đạo
           </p>
-          <h3 className="text-xl font-semibold text-[var(--color-text-primary)]">
+          <h3 className="mt-0.5 text-xl font-semibold text-[var(--color-text-primary)]">
             Tổng quan ngày, tháng và nhân sự
           </h3>
         </div>
-        <input
-          type="date"
-          value={date}
-          onChange={(event) => setDate(event.target.value)}
-          className="h-9 w-fit rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-        />
-        <button
-          type="button"
-          onClick={handleDownloadReport}
-          disabled={downloading}
-          className="inline-flex h-9 w-fit items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <Download className="h-4 w-4" aria-hidden="true" />
-          {downloading ? "Đang tải" : "Tải KPI CSV"}
-        </button>
-        <button
-          type="button"
-          onClick={handleDownloadExcelReport}
-          disabled={downloadingExcel}
-          className="inline-flex h-9 w-fit items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-accent)] px-3 text-sm font-medium text-white transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <Download className="h-4 w-4" aria-hidden="true" />
-          {downloadingExcel ? "Đang tạo" : "Tải KPI Excel"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="date"
+            aria-label="Chọn ngày"
+            value={date}
+            onChange={(event) => setDate(event.target.value)}
+            className="cvf-input h-9 rounded-lg px-3 text-sm"
+          />
+          <Button
+            variant="secondary"
+            icon={Download}
+            onClick={handleDownloadReport}
+            disabled={downloading}
+          >
+            {downloading ? "Đang tải" : "Tải KPI CSV"}
+          </Button>
+          <Button
+            variant="primary"
+            icon={Download}
+            onClick={handleDownloadExcelReport}
+            disabled={downloadingExcel}
+          >
+            {downloadingExcel ? "Đang tạo" : "Tải KPI Excel"}
+          </Button>
+        </div>
       </div>
 
       {downloadError && (
@@ -267,24 +276,14 @@ function ExecutiveKpiPanel() {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {cards.map((card) => (
-          <div
+          <KPICard
             key={card.label}
-            className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
-          >
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <p className="text-xs font-medium uppercase text-[var(--color-text-muted)]">
-                {card.label}
-              </p>
-              <card.Icon className={`h-4 w-4 ${card.color}`} aria-hidden="true" />
-            </div>
-            <p className="text-2xl font-bold text-[var(--color-text-primary)]">
-              {card.value.toLocaleString("vi-VN")}
-              {card.suffix ?? ""}
-            </p>
-            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-              {card.hint}
-            </p>
-          </div>
+            icon={card.Icon}
+            label={card.label}
+            value={`${card.value.toLocaleString("vi-VN")}${card.suffix ?? ""}`}
+            tone={card.tone}
+            hint={card.hint}
+          />
         ))}
       </div>
     </section>
