@@ -6,7 +6,13 @@ import { Employee } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { getAllEmployees } from "@/lib/personnelService";
 import { mockHangMucCongViec } from "@/data/mockData";
-import { Badge, Button, Card, SectionLabel } from "@/components/cosmic";
+import {
+  Badge,
+  Button,
+  Card,
+  ChipPicker,
+  SectionLabel,
+} from "@/components/cosmic";
 
 const VALID_SHIFTS = ["Ca 01", "Ca 02", "Ca 03", "Hành chánh", "Ca ngày"];
 
@@ -96,7 +102,7 @@ export default function EndShiftReportPage() {
   ).length;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5 pb-24">
+    <div className="mx-auto max-w-4xl space-y-5 pb-24">
       {/* Time + shift */}
       <Card>
         <div className="mb-4 flex items-center gap-2">
@@ -106,7 +112,7 @@ export default function EndShiftReportPage() {
           />
           <SectionLabel className="!mb-0">Thời gian</SectionLabel>
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="space-y-4">
           <div>
             <label
               htmlFor="date-input"
@@ -120,33 +126,21 @@ export default function EndShiftReportPage() {
               aria-label="Chọn ngày báo cáo"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="cvf-input w-full rounded-lg px-3 py-2 text-sm"
+              className="cvf-input w-full rounded-lg px-3 py-2 text-sm md:max-w-xs"
             />
           </div>
-          <div>
-            <label
-              htmlFor="shift-select"
-              className="mb-1.5 block text-xs font-medium text-[var(--color-text-secondary)]"
-            >
-              Ca làm việc
-            </label>
-            <select
-              id="shift-select"
-              aria-label="Chọn ca làm việc"
-              value={shift}
-              onChange={(e) => {
-                setShift(e.target.value);
-                setSelectedReporterId(null);
-              }}
-              className="cvf-input w-full rounded-lg px-3 py-2 text-sm"
-            >
-              {VALID_SHIFTS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
+          <ChipPicker
+            label="Ca làm việc"
+            value={shift}
+            onChange={(v) => {
+              setShift(v);
+              setSelectedReporterId(null);
+            }}
+            options={VALID_SHIFTS.map((s) => ({ value: s, label: s }))}
+            columns={5}
+            size="sm"
+            required
+          />
         </div>
       </Card>
 
@@ -160,31 +154,18 @@ export default function EndShiftReportPage() {
           <SectionLabel className="!mb-0">Người lập báo cáo</SectionLabel>
         </div>
         <div className="space-y-4">
-          <div>
-            <label
-              htmlFor="dept-select"
-              className="mb-1.5 block text-xs font-medium text-[var(--color-text-secondary)]"
-            >
-              Bộ phận
-            </label>
-            <select
-              id="dept-select"
-              aria-label="Chọn bộ phận"
-              value={selectedDept}
-              onChange={(e) => {
-                setSelectedDept(e.target.value);
-                setSelectedReporterId(null);
-              }}
-              className="cvf-input w-full rounded-lg px-3 py-2 text-sm"
-            >
-              <option value="">-- Chọn bộ phận --</option>
-              {DEPARTMENTS.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </div>
+          <ChipPicker
+            label="Bộ phận"
+            value={selectedDept}
+            onChange={(v) => {
+              setSelectedDept(v);
+              setSelectedReporterId(null);
+            }}
+            options={DEPARTMENTS.map((d) => ({ value: d, label: d }))}
+            columns={5}
+            size="sm"
+            required
+          />
 
           <div>
             <label

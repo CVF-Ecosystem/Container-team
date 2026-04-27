@@ -10,3 +10,4 @@ export { SegmentedTabs } from "./SegmentedTabs";
 export { Drawer } from "./Drawer";
 export { TextInput, SelectInput, TextAreaInput } from "./Input";
 export { StatusPill, type StatusPillTone } from "./StatusPill";
+export { ChipPicker } from "./ChipPicker";

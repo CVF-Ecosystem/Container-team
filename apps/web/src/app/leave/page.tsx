@@ -21,6 +21,7 @@ import { saveReport } from "@/services/reportService";
 import {
   Button,
   Card,
+  ChipPicker,
   KPICard,
   SectionLabel,
 } from "@/components/cosmic";
@@ -139,7 +140,7 @@ export default function LeaveReportPage() {
           <CalendarDays className="h-4 w-4 text-[var(--color-accent)]" aria-hidden="true" />
           <SectionLabel className="!mb-0">Thời gian nghỉ</SectionLabel>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-4">
           <div>
             <label
               htmlFor="leave-date"
@@ -153,31 +154,18 @@ export default function LeaveReportPage() {
               aria-label="Chọn ngày nghỉ"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="cvf-input w-full rounded-lg px-3 py-2 text-sm"
+              className="cvf-input w-full rounded-lg px-3 py-2 text-sm md:max-w-xs"
             />
           </div>
-          <div>
-            <label
-              htmlFor="ca-select"
-              className="mb-1.5 block text-xs font-medium text-[var(--color-text-secondary)]"
-            >
-              Ca nghỉ
-            </label>
-            <select
-              id="ca-select"
-              aria-label="Chọn ca nghỉ"
-              value={selectedCa}
-              onChange={(e) => setSelectedCa(e.target.value as CaLamViec)}
-              className="cvf-input w-full rounded-lg px-3 py-2 text-sm"
-            >
-              <option value="">-- Chọn ca --</option>
-              {CA_LAM_VIEC.map((ca) => (
-                <option key={ca} value={ca}>
-                  {ca}
-                </option>
-              ))}
-            </select>
-          </div>
+          <ChipPicker<CaLamViec>
+            label="Ca nghỉ"
+            value={selectedCa}
+            onChange={setSelectedCa}
+            options={CA_LAM_VIEC.map((ca) => ({ value: ca, label: ca }))}
+            columns={CA_LAM_VIEC.length === 5 ? 5 : 4}
+            size="sm"
+            required
+          />
         </div>
       </Card>
 
@@ -200,25 +188,13 @@ export default function LeaveReportPage() {
           <Tag className="h-4 w-4 text-[var(--color-warning)]" aria-hidden="true" />
           <SectionLabel className="!mb-0">Lý do nghỉ</SectionLabel>
         </div>
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-          {LY_DO_NGHI.map((lyDo) => {
-            const active = lyDoNghi === lyDo;
-            return (
-              <button
-                key={lyDo}
-                type="button"
-                onClick={() => setLyDoNghi(lyDo)}
-                className={`rounded-lg border px-3 py-2.5 text-sm transition-colors ${
-                  active
-                    ? "border-[var(--color-accent)] bg-[var(--color-accent-dim)] font-semibold text-[var(--color-accent-hover)]"
-                    : "border-[var(--color-border)] bg-[var(--color-elevated)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)]"
-                }`}
-              >
-                {lyDo}
-              </button>
-            );
-          })}
-        </div>
+        <ChipPicker
+          value={lyDoNghi}
+          onChange={setLyDoNghi}
+          options={LY_DO_NGHI.map((l) => ({ value: l, label: l }))}
+          columns={3}
+          required
+        />
       </Card>
 
       {/* Notes */}

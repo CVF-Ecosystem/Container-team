@@ -6,7 +6,13 @@ import { VesselList } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { getActiveVessels } from "@/lib/personnelService";
 import EmployeeSelector from "@/components/personnel/EmployeeSelector";
-import { Badge, Button, Card, SectionLabel } from "@/components/cosmic";
+import {
+  Badge,
+  Button,
+  Card,
+  ChipPicker,
+  SectionLabel,
+} from "@/components/cosmic";
 
 const SHIFTS = ["Ca 01", "Ca 02", "Ca 03", "Hành chánh", "Ca ngày"];
 
@@ -160,33 +166,15 @@ export default function StartShiftReportPage() {
               className="cvf-input w-full rounded-lg px-3 py-2 text-sm"
             />
           </div>
-          <div>
-            <label
-              htmlFor="shift-select"
-              className="mb-1.5 block text-xs font-medium text-[var(--color-text-secondary)]"
-            >
-              Ca làm việc
-            </label>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-              {SHIFTS.map((s) => {
-                const active = shift === s;
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setShift(s)}
-                    className={`rounded-lg border py-2 text-xs transition-colors ${
-                      active
-                        ? "border-[var(--color-accent)] bg-[var(--color-accent-dim)] font-semibold text-[var(--color-accent-hover)]"
-                        : "border-[var(--color-border)] bg-[var(--color-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-                    }`}
-                  >
-                    {s}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <ChipPicker
+            label="Ca làm việc"
+            value={shift}
+            onChange={setShift}
+            options={SHIFTS.map((s) => ({ value: s, label: s }))}
+            columns={5}
+            size="sm"
+            required
+          />
         </div>
       </Card>
 
