@@ -27,9 +27,8 @@ import {
   Ship,
   Trash2,
   Upload,
-  X,
 } from "lucide-react";
-import { KPICard } from "@/components/cosmic";
+import { Button, Drawer, KPICard } from "@/components/cosmic";
 
 const ShipAnalytics = dynamic(
   () => import("@/components/ship-report/ShipAnalytics"),
@@ -614,26 +613,20 @@ export default function ShipReportPage() {
         <ShipAnalytics data={filteredReports} />
       )}
 
-      {/* Create/Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="cvf-card rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-[var(--color-border)] flex justify-between items-center">
-              <h2 className="text-base font-bold text-[var(--color-text-primary)] flex items-center gap-2">
-                <Ship className="h-4 w-4 text-[var(--color-accent)]" aria-hidden="true" />
-                {currentReport.id ? "Chỉnh Sửa Tàu" : "Thêm Tàu Mới"}
-              </h2>
-              <button
-                type="button"
-                aria-label="Đóng"
-                onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded hover:bg-[var(--color-elevated)] text-[var(--color-text-muted)] transition-colors"
-              >
-                <X className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-6">
+      {/* Create/Edit Drawer */}
+      <Drawer
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={currentReport.id ? "Chỉnh Sửa Tàu" : "Thêm Tàu Mới"}
+        width={860}
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Hủy</Button>
+            <Button variant="primary" onClick={handleSave}>Lưu</Button>
+          </div>
+        }
+      >
+        <div className="space-y-6">
               {/* General Info */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-1">
@@ -752,27 +745,8 @@ export default function ShipReportPage() {
                   onChange={(e) => setCurrentReport({ ...currentReport, remark: e.target.value })}
                 />
               </div>
-            </div>
-
-            <div className="px-6 py-4 border-t border-[var(--color-border)] flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 rounded-lg text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-elevated)] transition-colors"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="px-6 py-2 rounded-lg text-sm font-bold text-white bg-[var(--color-accent)] hover:opacity-85 transition-opacity"
-              >
-                Lưu
-              </button>
-            </div>
-          </div>
         </div>
-      )}
+      </Drawer>
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && (
