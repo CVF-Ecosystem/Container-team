@@ -22,11 +22,13 @@ import {
   Button,
   Card,
   CardHeader,
+  ChipPicker,
   Drawer,
   KPICard,
   SectionLabel,
   type BadgeTone,
 } from "@/components/cosmic";
+import { CA_LAM_VIEC, type CaLamViec } from "@/types";
 
 const LOAI_LABEL: Record<string, string> = {
   NhanSu: "Nhân sự",
@@ -55,6 +57,7 @@ export default function HistoryPage() {
     boPhan: "",
     dateFrom: "",
     dateTo: "",
+    ca: "" as CaLamViec | "",
   });
   const [selected, setSelected] = useState<SavedReport | null>(null);
 
@@ -80,6 +83,7 @@ export default function HistoryPage() {
       .filter((r) => {
         if (filter.loai && r.LoaiBaoCao !== filter.loai) return false;
         if (filter.boPhan && r.BoPhan !== filter.boPhan) return false;
+        if (filter.ca && r.Ca !== filter.ca) return false;
         if (filter.dateFrom && r.Ngay < filter.dateFrom) return false;
         if (filter.dateTo && r.Ngay > filter.dateTo) return false;
         return true;
@@ -150,6 +154,19 @@ export default function HistoryPage() {
           />
         </div>
       )}
+
+      {/* Ca filter chips */}
+      <ChipPicker<CaLamViec | "">
+        label="Lọc theo ca"
+        value={filter.ca}
+        onChange={(ca) => setFilter({ ...filter, ca })}
+        options={[
+          { value: "", label: "Tất cả" },
+          ...CA_LAM_VIEC.map((ca) => ({ value: ca, label: ca })),
+        ]}
+        columns={4}
+        size="sm"
+      />
 
       {/* Filter toolbar */}
       <Card noPad>
@@ -235,13 +252,13 @@ export default function HistoryPage() {
           title={`${filteredReports.length} / ${reports.length} báo cáo`}
           subtitle="Click vào dòng để xem chi tiết"
           action={
-            (filter.loai || filter.boPhan || filter.dateFrom || filter.dateTo) && (
+            (filter.loai || filter.boPhan || filter.dateFrom || filter.dateTo || filter.ca) && (
               <Button
                 variant="ghost"
                 size="sm"
                 icon={Filter}
                 onClick={() =>
-                  setFilter({ loai: "", boPhan: "", dateFrom: "", dateTo: "" })
+                  setFilter({ loai: "", boPhan: "", dateFrom: "", dateTo: "", ca: "" })
                 }
               >
                 Xoá lọc
