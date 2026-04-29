@@ -1,18 +1,25 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { CalendarDays, FileText, Save, User } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { AlertTriangle, BarChart3, CalendarDays, FileText, Save, Ship, TrendingUp, User } from "lucide-react";
 import { Employee } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { getAllEmployees } from "@/lib/personnelService";
 import { mockHangMucCongViec } from "@/data/mockData";
+import { getVesselReports } from "@/services/vesselService";
 import {
   Badge,
   Button,
   Card,
   ChipPicker,
+  KPICard,
   SectionLabel,
 } from "@/components/cosmic";
+
+const SHIFT_HOURS: Record<string, number> = {
+  "Ca 01": 8, "Ca 02": 8, "Ca 03": 8,
+  "Hành chánh": 9, "Ca ngày": 12,
+};
 
 const VALID_SHIFTS = ["Ca 01", "Ca 02", "Ca 03", "Hành chánh", "Ca ngày"];
 
@@ -36,6 +43,32 @@ export default function EndShiftReportPage() {
     {},
   );
   const [notes, setNotes] = useState("");
+  const [incidents, setIncidents] = useState(0);
+  const [incidentDesc, setIncidentDesc] = useState("");
+  const [vesselKpis, setVesselKpis] = useState({
+    bocTeu: 0, doTeu: 0, totalTeu: 0, teuPerHour: 0,
+  });
+
+  const loadVesselKpis = useCallback(async () => {
+    try {
+      const reports = await getVesselReports({ startDate: date, endDate: date });
+      const bocTeu = reports.reduce((s, r) => s + (r.xuat_tau ?? 0), 0);
+      const doTeu  = reports.reduce((s, r) => s + (r.nhap_tau  ?? 0), 0);
+      const totalTeu = reports.reduce((s, r) => s + (r.teus ?? 0), 0);
+      const totalHours = reports.reduce((s, r) => s + (r.working_hours ?? 0), 0);
+      const elapsed = totalHours > 0 ? totalHours : (SHIFT_HOURS[shift] ?? 8);
+      const teuPerHour = elapsed > 0 ? Math.round((totalTeu / elapsed) * 10) / 10 : 0;
+      setVesselKpis({ bocTeu, doTeu, totalTeu, teuPerHour });
+    } catch {
+      // IndexedDB may not be populated
+    }
+  }, [date, shift]);
+
+  useEffect(() => {
+    void loadVesselKpis();
+    const timer = window.setInterval(() => void loadVesselKpis(), 30_000);
+    return () => window.clearInterval(timer);
+  }, [loadVesselKpis]);
 
   useEffect(() => {
     getAllEmployees().then(setEmployees);
@@ -88,6 +121,7 @@ export default function EndShiftReportPage() {
       },
       workItems,
       notes,
+      incidents: incidents > 0 ? { count: incidents, description: incidentDesc } : null,
       created_at: new Date(),
     };
     logger.info("Submitting end shift report", report);
@@ -103,6 +137,14 @@ export default function EndShiftReportPage() {
 
   return (
     <div className="space-y-5 pb-24">
+      {/* Live vessel KPI row */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <KPICard icon={Ship}       label="TEU bốc"         value={String(vesselKpis.bocTeu)}    tone="success" hint="Xuất tàu" />
+        <KPICard icon={Ship}       label="TEU dỡ"          value={String(vesselKpis.doTeu)}     tone="danger"  hint="Nhập tàu" />
+        <KPICard icon={BarChart3}  label="Tổng TEU"        value={String(vesselKpis.totalTeu)}  tone="accent"  hint="Trong ngày" />
+        <KPICard icon={TrendingUp} label="Năng suất TEU/h" value={String(vesselKpis.teuPerHour)} tone="info"   hint="Tự động tính" />
+      </div>
+
       {/* Time + shift */}
       <Card>
         <div className="mb-4 flex items-center gap-2">
@@ -302,6 +344,51 @@ export default function EndShiftReportPage() {
           </div>
         </Card>
       )}
+
+      {/* Incidents */}
+      <Card>
+        <div className="mb-4 flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-[var(--color-danger)]" aria-hidden="true" />
+          <SectionLabel className="!mb-0">Sự cố trong ca</SectionLabel>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label
+              htmlFor="incidents-count"
+              className="mb-1.5 block text-xs font-medium text-[var(--color-text-secondary)]"
+            >
+              Số sự cố
+            </label>
+            <input
+              id="incidents-count"
+              type="number"
+              min={0}
+              max={99}
+              value={incidents}
+              onChange={(e) => setIncidents(Math.max(0, Number(e.target.value)))}
+              className="cvf-input w-28 rounded-lg px-3 py-2 text-sm"
+            />
+          </div>
+          {incidents > 0 && (
+            <div>
+              <label
+                htmlFor="incidents-desc"
+                className="mb-1.5 block text-xs font-medium text-[var(--color-text-secondary)]"
+              >
+                Mô tả sự cố
+              </label>
+              <textarea
+                id="incidents-desc"
+                value={incidentDesc}
+                onChange={(e) => setIncidentDesc(e.target.value)}
+                rows={3}
+                placeholder="Mô tả ngắn gọn các sự cố xảy ra trong ca..."
+                className="cvf-input w-full resize-none rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+          )}
+        </div>
+      </Card>
 
       {/* Sticky submit footer */}
       <div className="sticky bottom-4 z-20 flex flex-col gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]/95 p-4 backdrop-blur-md sm:flex-row sm:items-center">
