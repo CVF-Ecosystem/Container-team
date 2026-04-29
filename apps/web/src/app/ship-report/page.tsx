@@ -233,16 +233,14 @@ export default function ShipReportPage() {
     }
   };
 
-  const filteredReports = useMemo(() => {
-    return reports.filter((r) => {
-      const matchesSearch =
-        r.vessel_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.shipping_line?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesLine = selectedLine ? r.shipping_line === selectedLine : true;
-      const matchesVessel = selectedVessel ? r.vessel_name === selectedVessel : true;
-      return matchesSearch && matchesLine && matchesVessel;
-    });
-  }, [reports, searchQuery, selectedLine, selectedVessel]);
+  const filteredReports = reports.filter((r) => {
+    const matchesSearch =
+      r.vessel_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.shipping_line?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesLine = selectedLine ? r.shipping_line === selectedLine : true;
+    const matchesVessel = selectedVessel ? r.vessel_name === selectedVessel : true;
+    return matchesSearch && matchesLine && matchesVessel;
+  });
 
   const stats = useMemo(() => {
     const totalMoves = filteredReports.reduce(

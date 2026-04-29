@@ -120,13 +120,17 @@ export function useDebouncedCallback<T extends (...args: any[]) => any>(
   const callbackRef = useRef(callback);
   callbackRef.current = callback;
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  return useCallback(
-    debounce((...args: Parameters<T>) => {
+  // Store the debounced fn in a ref so useCallback stays stable with []
+  const debouncedRef = useRef<((...args: Parameters<T>) => void) | null>(null);
+  useEffect(() => {
+    debouncedRef.current = debounce((...args: Parameters<T>) => {
       callbackRef.current(...args);
-    }, delay),
-    [delay]
-  );
+    }, delay);
+  }, [delay]);
+
+  return useCallback((...args: Parameters<T>) => {
+    debouncedRef.current?.(...args);
+  }, []); // ✅ inline function expression, inline empty array
 }
 
 /**

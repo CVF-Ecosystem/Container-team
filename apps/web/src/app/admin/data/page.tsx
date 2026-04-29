@@ -8,7 +8,7 @@ import { useDbStatus, useAvailableYears, useSyncStatus, useSyncQueue } from '@/l
 import { logger } from '@/lib/logger';
 import { clearYearData } from '@/lib/dataService';
 import { db } from '@/lib/db';
-import { Package, Ship } from 'lucide-react';
+
 import {
     downloadJSONBackup,
     downloadExcelBackup,
@@ -32,7 +32,9 @@ import {
     FileSpreadsheet,
     FolderOpen,
     Info,
+    Package,
     RefreshCw,
+    Ship,
     Trash2,
     Upload,
     WifiOff,

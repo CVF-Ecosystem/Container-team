@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import apiClient, {
   DailyDataItem,
   DailyDataInput,
@@ -32,12 +32,15 @@ function useFetch<T>(
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Always-current ref avoids stale closure; useCallback stays stable with []
+  const fnRef = useRef(fetchFn);
+  fnRef.current = fetchFn;
 
-  const fetch = useCallback(async () => {
+  const refetch = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchFn();
+      const result = await fnRef.current();
       if (result.error) {
         setError(result.error);
       } else {
@@ -48,14 +51,15 @@ function useFetch<T>(
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, []); // ✅ inline literal — fnRef.current is a ref, not a dep
 
+  // Serialised key triggers re-fetch when caller deps change
+  const depsKey = JSON.stringify(deps);
   useEffect(() => {
-    fetch();
-  }, [fetch]);
+    void refetch();
+  }, [refetch, depsKey]); // ✅ inline literal
 
-  return { data, loading, error, refetch: fetch };
+  return { data, loading, error, refetch };
 }
 
 // ============= AUTH HOOKS =============
