@@ -14,13 +14,16 @@ import {
   XCircle,
 } from "lucide-react";
 import CascadingSelect from "@/components/CascadingSelect";
+import { useAuth } from "@/components/AuthProvider";
 import { mockNhanVien } from "@/data/mockData";
 import { logger } from "@/lib/logger";
 import { NhanVien, CA_LAM_VIEC, CaLamViec, BaoCao } from "@/types";
-import { saveReport, getLeaveStats } from "@/services/reportService";
+import { saveReport, getLeaveStats, getAllReports, updateReport, type SavedReport } from "@/services/reportService";
 import {
+  Badge,
   Button,
   Card,
+  CardHeader,
   ChipPicker,
   KPICard,
   SectionLabel,
@@ -37,7 +40,22 @@ const LY_DO_NGHI = [
   "Khác",
 ];
 
+const STATUS_TONE: Record<string, "warning" | "success" | "danger" | "muted"> = {
+  Draft: "warning",
+  Approved: "success",
+  Rejected: "danger",
+  Locked: "muted",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  Draft: "Chờ duyệt",
+  Approved: "Đã duyệt",
+  Rejected: "Từ chối",
+  Locked: "Đã khoá",
+};
+
 export default function LeaveReportPage() {
+  const { role } = useAuth();
   const [nhanVienList, setNhanVienList] = useState<NhanVien[]>([]);
   const [selectedNhanVien, setSelectedNhanVien] = useState<NhanVien | null>(null);
   const [selectedCa, setSelectedCa] = useState<CaLamViec | "">("");
@@ -47,16 +65,31 @@ export default function LeaveReportPage() {
   const [lyDoNghi, setLyDoNghi] = useState("");
   const [ghiChu, setGhiChu] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">(
-    "idle",
-  );
+  const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
   const [leaveStats, setLeaveStats] = useState({ thisMonth: 0, pending: 0, approved: 0, rejected: 0 });
+  const [leaveList, setLeaveList] = useState<SavedReport[]>([]);
+
+  const refreshData = () => {
+    setLeaveStats(getLeaveStats());
+    setLeaveList(getAllReports().filter((r) => r.LoaiBaoCao === "NghiPhep")
+      .sort((a, b) => b.Created.localeCompare(a.Created)));
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem(NHAN_VIEN_KEY);
     setNhanVienList(saved ? JSON.parse(saved) : mockNhanVien);
-    setLeaveStats(getLeaveStats());
+    refreshData();
   }, []);
+
+  const handleApprove = (id: string) => {
+    updateReport(id, { TrangThai: "Approved", Modified: new Date().toISOString() });
+    refreshData();
+  };
+
+  const handleReject = (id: string) => {
+    updateReport(id, { TrangThai: "Rejected", Modified: new Date().toISOString() });
+    refreshData();
+  };
 
   const handleSubmit = async () => {
     if (!selectedNhanVien || !selectedCa || !lyDoNghi) {
@@ -84,7 +117,7 @@ export default function LeaveReportPage() {
 
     saveReport(baoCao);
     logger.info("Saved leave report", baoCao);
-    setLeaveStats(getLeaveStats());
+    refreshData();
 
     setIsSubmitting(false);
     setSubmitStatus("success");
@@ -226,6 +259,50 @@ export default function LeaveReportPage() {
           {isSubmitting ? "Đang lưu..." : "Đăng ký nghỉ phép"}
         </Button>
       </div>
+
+      {/* Leave request list */}
+      <Card noPad>
+        <CardHeader title="Danh sách yêu cầu nghỉ phép" subtitle={`${leaveList.length} yêu cầu`} />
+        {leaveList.length === 0 ? (
+          <p className="px-4 pb-4 text-sm text-[var(--color-text-muted)]">Chưa có yêu cầu nào.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">
+                  {["Ngày", "Ca", "Người nghỉ", "Bộ phận", "Lý do", "Trạng thái", "Hành động"].map((h) => (
+                    <th key={h} className="px-4 py-2.5 text-left font-medium">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-border)]">
+                {leaveList.map((r) => (
+                  <tr key={r.id} className="hover:bg-[var(--color-elevated)]">
+                    <td className="px-4 py-2.5 text-[var(--color-text-primary)]">{r.Ngay}</td>
+                    <td className="px-4 py-2.5 text-[var(--color-text-secondary)]">{r.Ca}</td>
+                    <td className="px-4 py-2.5 font-medium text-[var(--color-text-primary)]">{r.NguoiLap_HoTen}</td>
+                    <td className="px-4 py-2.5 text-[var(--color-text-secondary)]">{r.BoPhan}</td>
+                    <td className="px-4 py-2.5 text-[var(--color-text-secondary)]">{r.LyDoNghi || "—"}</td>
+                    <td className="px-4 py-2.5">
+                      <Badge tone={STATUS_TONE[r.TrangThai] ?? "muted"}>
+                        {STATUS_LABEL[r.TrangThai] ?? r.TrangThai}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {role === "admin" && r.TrangThai === "Draft" && (
+                        <div className="flex gap-2">
+                          <Button variant="success" size="sm" onClick={() => handleApprove(r.id)}>Duyệt</Button>
+                          <Button variant="danger" size="sm" onClick={() => handleReject(r.id)}>Từ chối</Button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

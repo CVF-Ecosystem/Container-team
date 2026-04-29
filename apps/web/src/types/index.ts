@@ -59,7 +59,7 @@ export interface BaoCao {
   // Cho báo cáo nghỉ phép
   LyDoNghi?: string;
   GhiChu: string;
-  TrangThai: 'Draft' | 'Locked';
+  TrangThai: 'Draft' | 'Locked' | 'Approved' | 'Rejected';
   Created: string;
   Modified: string;
   SyncStatus: 'pending' | 'synced' | 'error';
