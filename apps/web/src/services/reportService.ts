@@ -63,6 +63,21 @@ export function getLeaveStats() {
   };
 }
 
+// Throughput theo giờ trong ngày (dùng cho biểu đồ giờ)
+export function getThroughputByHour(date: string): { hour: number; teus: number }[] {
+  const reports = getReportsByDate(date).filter(r => r.LoaiBaoCao === 'SoLieu');
+  const byHour = new Map<number, number>();
+  for (const r of reports) {
+    const hour = new Date(r.Created).getHours();
+    const total = (r.ChiTiet ?? []).reduce((sum, item) => {
+      const val = typeof item.GiaTri === 'number' ? item.GiaTri : 0;
+      return sum + (item.checked ? val : 0);
+    }, 0);
+    byHour.set(hour, (byHour.get(hour) ?? 0) + total);
+  }
+  return Array.from({ length: 24 }, (_, h) => ({ hour: h, teus: byHour.get(h) ?? 0 }));
+}
+
 // Thống kê tổng hợp
 export function getReportStats() {
   const reports = getAllReports();

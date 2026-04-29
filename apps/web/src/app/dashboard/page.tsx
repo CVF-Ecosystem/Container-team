@@ -18,7 +18,9 @@ import { DashboardData, DashboardSummary, PeriodType } from "@/types";
 import KPICards from "@/components/dashboard/KPICards";
 import { KPICard, type KPITone, Button } from "@/components/cosmic";
 import DataTable from "@/components/dashboard/DataTable";
+import AlertsPanel from "@/components/dashboard/AlertsPanel";
 import { loadFromStorage } from "@/components/dashboard/ExcelParser";
+import { getThroughputByHour } from "@/services/reportService";
 import DateFilter, { DateFilterValue } from "@/components/dashboard/DateFilter";
 import DateRangePicker, {
   DateRange,
@@ -49,6 +51,14 @@ const YoYComparisonChart = dynamic(
 );
 const CumulativeChart = dynamic(
   () => import("@/components/dashboard/CumulativeChart"),
+  { ssr: false }
+);
+const HourlyChart = dynamic(
+  () => import("@/components/dashboard/HourlyChart"),
+  { ssr: false }
+);
+const CargoDonut = dynamic(
+  () => import("@/components/dashboard/CargoDonut"),
   { ssr: false }
 );
 
@@ -449,6 +459,9 @@ export default function DashboardPage() {
     monthly: false,
   });
 
+  // Hourly throughput (today's date)
+  const [hourlyData, setHourlyData] = useState<{ hour: number; teus: number }[]>([]);
+
   // Pagination state for daily view
   const [dailyPage, setDailyPage] = useState(1);
 
@@ -502,6 +515,11 @@ export default function DashboardPage() {
   );
   const yoyQuarterData = useYoYComparisonQuarter(dateFilter.quarter || 1, 3);
   const yoyYearData = useYoYComparisonYear(3);
+
+  // Load hourly data on mount
+  useEffect(() => {
+    setHourlyData(getThroughputByHour(todayIsoDate()));
+  }, []);
 
   // Load from localStorage on mount (fallback)
   useEffect(() => {
@@ -661,6 +679,14 @@ export default function DashboardPage() {
     };
   }, [filteredData]);
 
+  // Cargo classification breakdown (Hạ / Giao / CFS In / CFS Out)
+  const cargoSummary = useMemo(() => ({
+    ha:     filteredData.reduce((acc, d) => acc + d.xe.ha     + d.xalan.ha,     0),
+    giao:   filteredData.reduce((acc, d) => acc + d.xe.giao   + d.xalan.giao,   0),
+    cfsIn:  filteredData.reduce((acc, d) => acc + d.xe.fullCfs  + d.xalan.fullCfs,  0),
+    cfsOut: filteredData.reduce((acc, d) => acc + d.xe.emptyCfs + d.xalan.emptyCfs, 0),
+  }), [filteredData]);
+
   // Chart data - paginate for daily mode
   const chartData = useMemo(() => {
     if (dashboardMode === "daily") {
@@ -738,6 +764,8 @@ export default function DashboardPage() {
         </div>
 
         <ExecutiveKpiPanel />
+
+        <AlertsPanel date={todayIsoDate()} />
 
         {/* Dashboard Mode Switcher */}
         <div className="flex items-center gap-4 mb-4">
@@ -851,11 +879,24 @@ export default function DashboardPage() {
             />
           </div>
 
-          {/* Pie Chart - 1/3 width */}
-          <div>
+          {/* Pie + CargoDonut stacked - 1/3 width */}
+          <div className="flex flex-col gap-4">
             <PieChart xe={summary.xeTotal} xalan={summary.xalanTotal} />
+            <CargoDonut
+              ha={cargoSummary.ha}
+              giao={cargoSummary.giao}
+              cfsIn={cargoSummary.cfsIn}
+              cfsOut={cargoSummary.cfsOut}
+            />
           </div>
         </div>
+
+        {/* Hourly throughput — daily mode only */}
+        {dashboardMode === "daily" && (
+          <div className="mb-6">
+            <HourlyChart data={hourlyData} />
+          </div>
+        )}
 
         {/* Cumulative Chart - shows when Lũy Tiến tab is active */}
         {activeTab === "cumulative" && cumulativeChartData.length > 0 && (
