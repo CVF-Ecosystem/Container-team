@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Bell,
   CheckCircle2,
@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { changePassword } from "@/lib/authService";
+import { getPreferences, setPreferences } from "@/lib/userPreferences";
+import { enablePushNotifications } from "@/lib/notificationService";
 import {
   Badge,
   Button,
@@ -45,17 +47,40 @@ export default function SettingsPage() {
   const [pwStatus, setPwStatus] = useState<"idle" | "success" | "error">("idle");
   const [pwMessage, setPwMessage] = useState("");
 
-  // Display tab state (UI-only, persistence to be wired later)
+  // Display tab state — persisted in localStorage
   const [language, setLanguage] = useState<"vi" | "en">("vi");
   const [density, setDensity] = useState<"compact" | "comfortable" | "spacious">(
     "comfortable",
   );
 
-  // Notifications tab state (UI-only)
+  // Notifications tab state — persisted in localStorage
   const [notifShift, setNotifShift] = useState(true);
   const [notifAlert, setNotifAlert] = useState(true);
   const [notifLeave, setNotifLeave] = useState(false);
   const [notifEmail, setNotifEmail] = useState(false);
+
+  const NOTIF_KEY = "ttport.notifications";
+
+  useEffect(() => {
+    const prefs = getPreferences();
+    setLanguage(prefs.language);
+    setDensity(prefs.density);
+    try {
+      const saved = localStorage.getItem(NOTIF_KEY);
+      if (saved) {
+        const n = JSON.parse(saved);
+        setNotifShift(n.shift ?? true);
+        setNotifAlert(n.alert ?? true);
+        setNotifLeave(n.leave ?? false);
+        setNotifEmail(n.email ?? false);
+      }
+    } catch {}
+  }, []);
+
+  const saveNotif = (patch: Record<string, boolean>) => {
+    const current = { shift: notifShift, alert: notifAlert, leave: notifLeave, email: notifEmail, ...patch };
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(current));
+  };
 
   const handleChangePassword = async (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -209,7 +234,7 @@ export default function SettingsPage() {
                       <button
                         key={o.v}
                         type="button"
-                        onClick={() => setLanguage(o.v)}
+                        onClick={() => { setLanguage(o.v); setPreferences({ language: o.v }); }}
                         className={`rounded-lg border px-4 py-2 text-sm transition-colors ${
                           active
                             ? "border-[var(--color-accent)] bg-[var(--color-accent-dim)] font-semibold text-[var(--color-accent-hover)]"
@@ -240,7 +265,7 @@ export default function SettingsPage() {
                       <button
                         key={o.v}
                         type="button"
-                        onClick={() => setDensity(o.v)}
+                        onClick={() => { setDensity(o.v); setPreferences({ density: o.v }); }}
                         className={`flex-1 rounded-lg border py-2.5 text-sm transition-colors ${
                           active
                             ? "border-[var(--color-accent)] bg-[var(--color-accent-dim)] font-semibold text-[var(--color-accent-hover)]"
@@ -273,25 +298,29 @@ export default function SettingsPage() {
                   label: "Nhắc nhở ca làm việc",
                   sub: "Thông báo 30 phút trước khi ca bắt đầu",
                   val: notifShift,
-                  set: setNotifShift,
+                  set: (v: boolean) => { setNotifShift(v); saveNotif({ shift: v }); },
                 },
                 {
                   label: "Cảnh báo hệ thống",
                   sub: "Sự cố thiết bị, tàu trễ, thông tin khẩn",
                   val: notifAlert,
-                  set: setNotifAlert,
+                  set: (v: boolean) => { setNotifAlert(v); saveNotif({ alert: v }); },
                 },
                 {
                   label: "Phê duyệt nghỉ phép",
                   sub: "Khi có yêu cầu mới hoặc thay đổi trạng thái",
                   val: notifLeave,
-                  set: setNotifLeave,
+                  set: (v: boolean) => { setNotifLeave(v); saveNotif({ leave: v }); },
                 },
                 {
                   label: "Nhận thông báo qua Email",
                   sub: "Gửi bản tóm tắt ca hàng ngày về email nội bộ",
                   val: notifEmail,
-                  set: setNotifEmail,
+                  set: async (v: boolean) => {
+                    setNotifEmail(v);
+                    saveNotif({ email: v });
+                    if (v) await enablePushNotifications();
+                  },
                 },
               ].map((item) => (
                 <div
