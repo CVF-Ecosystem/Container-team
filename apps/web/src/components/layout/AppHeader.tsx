@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Bell, BellOff, Menu, RefreshCw, WifiOff } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { useSyncStatus } from "@/lib/hooks";
 import { syncAll, type SyncStatus } from "@/lib/syncService";
@@ -10,6 +10,8 @@ import {
   enablePushNotifications,
   type NotificationSetupStatus,
 } from "@/lib/notificationService";
+import { getActiveShift, getShiftElapsed, type ActiveShift } from "@/lib/shiftSession";
+import { StatusPill } from "@/components/cosmic";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard vận hành",
@@ -86,15 +88,24 @@ interface AppHeaderProps {
 
 export default function AppHeader({ onMenuClick }: AppHeaderProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { session } = useAuth();
   const syncStatus = useSyncStatus();
   const [now, setNow] = useState<Date | null>(null);
   const [notificationStatus, setNotificationStatus] =
     useState<NotificationSetupStatus | "idle" | "working">("idle");
+  const [activeShift, setActiveShift] = useState<ActiveShift | null>(null);
+  const [elapsed, setElapsed] = useState("");
 
   useEffect(() => {
-    setNow(new Date());
-    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    const tick = () => {
+      setNow(new Date());
+      const shift = getActiveShift();
+      setActiveShift(shift);
+      setElapsed(shift ? getShiftElapsed(shift) : "");
+    };
+    tick();
+    const timer = window.setInterval(tick, 60_000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -149,6 +160,19 @@ export default function AppHeader({ onMenuClick }: AppHeaderProps) {
           </p>
         </div>
       </div>
+
+      {activeShift && (
+        <button
+          type="button"
+          onClick={() => router.push("/end-shift")}
+          className="hidden items-center sm:flex"
+          title="Nhấn để đến trang báo cáo cuối ca"
+        >
+          <StatusPill tone="success" pulse>
+            Ca {activeShift.shift} đang chạy · {elapsed}
+          </StatusPill>
+        </button>
+      )}
 
       <div className="flex items-center gap-3">
         <button
