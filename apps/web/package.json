@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@e965/xlsx": "^0.20.3",
-    "@sentry/nextjs": "^10.40.0",
+    "@sentry/nextjs": "^9.0.0",
     "@tanthuan/shared-types": "file:../../packages/shared-types",
     "dexie": "^4.2.1",
     "dexie-react-hooks": "^4.2.0",

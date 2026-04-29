@@ -110,12 +110,6 @@ export default withSentryConfig(nextConfig, {
   // Disable source map upload if no auth token (local dev)
   authToken: process.env.SENTRY_AUTH_TOKEN,
 
-  webpack: {
-    treeshake: {
-      removeDebugLogging: true,
-    },
-  },
-
   // Tunnel Sentry requests through Next.js to avoid ad blockers
   tunnelRoute: "/monitoring",
 });
