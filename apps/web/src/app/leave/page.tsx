@@ -17,7 +17,7 @@ import CascadingSelect from "@/components/CascadingSelect";
 import { mockNhanVien } from "@/data/mockData";
 import { logger } from "@/lib/logger";
 import { NhanVien, CA_LAM_VIEC, CaLamViec, BaoCao } from "@/types";
-import { saveReport } from "@/services/reportService";
+import { saveReport, getLeaveStats } from "@/services/reportService";
 import {
   Button,
   Card,
@@ -50,10 +50,12 @@ export default function LeaveReportPage() {
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">(
     "idle",
   );
+  const [leaveStats, setLeaveStats] = useState({ thisMonth: 0, pending: 0, approved: 0, rejected: 0 });
 
   useEffect(() => {
     const saved = localStorage.getItem(NHAN_VIEN_KEY);
     setNhanVienList(saved ? JSON.parse(saved) : mockNhanVien);
+    setLeaveStats(getLeaveStats());
   }, []);
 
   const handleSubmit = async () => {
@@ -82,6 +84,7 @@ export default function LeaveReportPage() {
 
     saveReport(baoCao);
     logger.info("Saved leave report", baoCao);
+    setLeaveStats(getLeaveStats());
 
     setIsSubmitting(false);
     setSubmitStatus("success");
@@ -95,35 +98,30 @@ export default function LeaveReportPage() {
 
   return (
     <div className="space-y-5 pb-10">
-      {/* Stats placeholder — to be wired to real data later */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <KPICard
           icon={ClipboardList}
           label="Yêu cầu tháng này"
-          value="—"
+          value={String(leaveStats.thisMonth)}
           tone="accent"
-          hint="Chờ kết nối dữ liệu"
         />
         <KPICard
           icon={Clock}
           label="Chờ phê duyệt"
-          value="—"
+          value={String(leaveStats.pending)}
           tone="warning"
-          hint="Chờ kết nối dữ liệu"
         />
         <KPICard
           icon={CheckCircle2}
           label="Đã duyệt"
-          value="—"
+          value={String(leaveStats.approved)}
           tone="success"
-          hint="Chờ kết nối dữ liệu"
         />
         <KPICard
           icon={XCircle}
           label="Từ chối"
-          value="—"
+          value={String(leaveStats.rejected)}
           tone="danger"
-          hint="Chờ kết nối dữ liệu"
         />
       </div>
 

@@ -42,6 +42,27 @@ export function getReportsByBoPhan(boPhan: string): SavedReport[] {
   return getAllReports().filter(r => r.BoPhan === boPhan);
 }
 
+// Cập nhật báo cáo (patch một phần)
+export function updateReport(id: string, patch: Partial<BaoCao>): void {
+  const reports = getAllReports();
+  const idx = reports.findIndex((r) => r.id === id);
+  if (idx === -1) return;
+  reports[idx] = { ...reports[idx], ...patch };
+  localStorage.setItem(BAO_CAO_KEY, JSON.stringify(reports));
+}
+
+// Thống kê nghỉ phép
+export function getLeaveStats() {
+  const reports = getAllReports().filter((r) => r.LoaiBaoCao === 'NghiPhep');
+  const thisMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
+  return {
+    thisMonth: reports.filter((r) => r.Created.startsWith(thisMonth)).length,
+    pending: reports.filter((r) => r.TrangThai === 'Draft').length,
+    approved: reports.filter((r) => (r.TrangThai as string) === 'Approved').length,
+    rejected: reports.filter((r) => (r.TrangThai as string) === 'Rejected').length,
+  };
+}
+
 // Thống kê tổng hợp
 export function getReportStats() {
   const reports = getAllReports();
