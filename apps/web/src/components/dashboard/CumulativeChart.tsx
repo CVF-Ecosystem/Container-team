@@ -82,7 +82,7 @@ export default function CumulativeChart({ data, title = 'Biểu đồ Lũy Tiế
         if (!dataPoint) return null;
 
         return (
-            <div className="bg-gray-800 border border-gray-600 rounded-lg p-3 shadow-xl">
+            <div className="bg-[var(--color-surface)] border border-[var(--color-border-strong)] rounded-lg p-3 shadow-xl">
                 <p className="text-white font-medium mb-2">{label}</p>
                 <div className="space-y-1 text-sm">
                     <div className="flex justify-between gap-4">
@@ -97,8 +97,8 @@ export default function CumulativeChart({ data, title = 'Biểu đồ Lũy Tiế
                             +{dataPoint.xalan_original?.toLocaleString()} → {dataPoint.xalan_cumulative?.toLocaleString()}
                         </span>
                     </div>
-                    <div className="flex justify-between gap-4 pt-1 border-t border-gray-600">
-                        <span className="text-blue-400">Tổng lũy tiến:</span>
+                    <div className="flex justify-between gap-4 pt-1 border-t border-[var(--color-border)]">
+                        <span className="text-[var(--color-accent)]">Tổng lũy tiến:</span>
                         <span className="text-white font-medium">{dataPoint.total_cumulative?.toLocaleString()}</span>
                     </div>
                 </div>
@@ -108,9 +108,9 @@ export default function CumulativeChart({ data, title = 'Biểu đồ Lũy Tiế
 
     if (!data || data.length === 0) {
         return (
-            <div className="bg-gray-800/50 rounded-xl p-6">
+            <div className="bg-[var(--color-surface)] rounded-xl p-6">
                 <h3 className="text-lg font-semibold text-white mb-4">{title}</h3>
-                <div className="h-64 flex items-center justify-center text-gray-500">
+                <div className="h-64 flex items-center justify-center text-[var(--color-text-muted)]">
                     Không có dữ liệu để hiển thị
                 </div>
             </div>
@@ -118,7 +118,7 @@ export default function CumulativeChart({ data, title = 'Biểu đồ Lũy Tiế
     }
 
     return (
-        <div className="bg-gray-800/50 rounded-xl p-6">
+        <div className="bg-[var(--color-surface)] rounded-xl p-6">
             <h3 className="text-lg font-semibold text-white mb-4">📈 {title}</h3>
 
             <div className="h-80">
@@ -137,15 +137,15 @@ export default function CumulativeChart({ data, title = 'Biểu đồ Lũy Tiế
                                 <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
                             </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} />
                         <XAxis
                             dataKey="label"
-                            stroke="#9ca3af"
-                            tick={{ fill: '#9ca3af', fontSize: 12 }}
+                            stroke="var(--color-border-strong)"
+                            tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }}
                         />
                         <YAxis
-                            stroke="#9ca3af"
-                            tick={{ fill: '#9ca3af', fontSize: 12 }}
+                            stroke="var(--color-border-strong)"
+                            tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }}
                             tickFormatter={(value) => {
                                 if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
                                 if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
@@ -156,7 +156,7 @@ export default function CumulativeChart({ data, title = 'Biểu đồ Lũy Tiế
                         <Legend
                             wrapperStyle={{ paddingTop: '10px' }}
                             formatter={(value) => (
-                                <span className="text-gray-300">{value}</span>
+                                <span className="text-[var(--color-text-secondary)]">{value}</span>
                             )}
                         />
                         <Area
@@ -183,21 +183,21 @@ export default function CumulativeChart({ data, title = 'Biểu đồ Lũy Tiế
 
             {/* Summary */}
             <div className="mt-4 grid grid-cols-3 gap-4 text-center">
-                <div className="bg-gray-900/50 rounded-lg p-3">
-                    <p className="text-gray-400 text-xs">Tổng XE</p>
+                <div className="bg-[var(--color-elevated)] rounded-lg p-3">
+                    <p className="text-[var(--color-text-secondary)] text-xs">Tổng XE</p>
                     <p className="text-orange-400 text-lg font-bold">
                         {cumulativeData[cumulativeData.length - 1]?.xe_cumulative?.toLocaleString() || 0}
                     </p>
                 </div>
-                <div className="bg-gray-900/50 rounded-lg p-3">
-                    <p className="text-gray-400 text-xs">Tổng XALAN</p>
+                <div className="bg-[var(--color-elevated)] rounded-lg p-3">
+                    <p className="text-[var(--color-text-secondary)] text-xs">Tổng XALAN</p>
                     <p className="text-purple-400 text-lg font-bold">
                         {cumulativeData[cumulativeData.length - 1]?.xalan_cumulative?.toLocaleString() || 0}
                     </p>
                 </div>
-                <div className="bg-gray-900/50 rounded-lg p-3">
-                    <p className="text-gray-400 text-xs">Tổng Cộng</p>
-                    <p className="text-blue-400 text-lg font-bold">
+                <div className="bg-[var(--color-elevated)] rounded-lg p-3">
+                    <p className="text-[var(--color-text-secondary)] text-xs">Tổng Cộng</p>
+                    <p className="text-[var(--color-accent)] text-lg font-bold">
                         {cumulativeData[cumulativeData.length - 1]?.total_cumulative?.toLocaleString() || 0}
                     </p>
                 </div>

@@ -69,9 +69,9 @@ export default function DataTable({
   };
 
   return (
-    <div className="bg-gray-800/80 rounded-xl border border-gray-700 overflow-hidden">
+    <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 bg-gray-700/50 flex justify-between items-center">
+      <div className="px-4 py-3 bg-[var(--color-elevated)] flex justify-between items-center">
         <h3 className="text-lg font-semibold text-white">📋 Bảng Chi Tiết</h3>
         <button
           onClick={handleExport}
@@ -99,18 +99,18 @@ export default function DataTable({
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-700/30">
-              <th className="px-3 py-3 text-left text-gray-300 font-medium">
+            <tr className="bg-[var(--color-elevated)]">
+              <th className="px-3 py-3 text-left text-[var(--color-text-secondary)] font-medium">
                 Thời gian
               </th>
               <th
-                className="px-3 py-3 text-right text-green-400 font-medium"
+                className="px-3 py-3 text-right text-[var(--color-success)] font-medium"
                 title="Hạ XE + Hạ XALAN (không CFS)"
               >
                 Vào
               </th>
               <th
-                className="px-3 py-3 text-right text-red-400 font-medium"
+                className="px-3 py-3 text-right text-[var(--color-danger)] font-medium"
                 title="Giao XE + Giao XALAN (không CFS)"
               >
                 Ra
@@ -139,7 +139,7 @@ export default function DataTable({
               >
                 Tổng
               </th>
-              <th className="px-3 py-3 text-right text-gray-300 font-medium">
+              <th className="px-3 py-3 text-right text-[var(--color-text-secondary)] font-medium">
                 Trend
               </th>
             </tr>
@@ -147,7 +147,7 @@ export default function DataTable({
           <tbody>
             {paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={8} className="px-4 py-8 text-center text-[var(--color-text-muted)]">
                   Chưa có dữ liệu. Vui lòng upload file Excel.
                 </td>
               </tr>
@@ -162,18 +162,18 @@ export default function DataTable({
                 return (
                   <tr
                     key={item.id || index}
-                    className={`border-t border-gray-700 hover:bg-gray-700/20 transition-colors ${
-                      onRowClick ? "cursor-pointer hover:bg-gray-700/40" : ""
+                    className={`border-t border-[var(--color-border)] hover:bg-[var(--color-elevated)]/20 transition-colors ${
+                      onRowClick ? "cursor-pointer hover:bg-[var(--color-elevated)]/40" : ""
                     }`}
                     onClick={onRowClick ? () => onRowClick(item) : undefined}
                   >
                     <td className="px-3 py-3 text-white font-medium">
                       {item.label}
                     </td>
-                    <td className="px-3 py-3 text-right text-green-400">
+                    <td className="px-3 py-3 text-right text-[var(--color-success)]">
                       {tongVao.toLocaleString("vi-VN")}
                     </td>
-                    <td className="px-3 py-3 text-right text-red-400">
+                    <td className="px-3 py-3 text-right text-[var(--color-danger)]">
                       {tongRa.toLocaleString("vi-VN")}
                     </td>
                     <td className="px-3 py-3 text-right text-cyan-400">
@@ -193,10 +193,10 @@ export default function DataTable({
                         <span
                           className={`${
                             item.comparison.trend === "up"
-                              ? "text-green-400"
+                              ? "text-[var(--color-success)]"
                               : item.comparison.trend === "down"
-                              ? "text-red-400"
-                              : "text-gray-400"
+                              ? "text-[var(--color-danger)]"
+                              : "text-[var(--color-text-secondary)]"
                           }`}
                         >
                           {item.comparison.trend === "up"
@@ -207,7 +207,7 @@ export default function DataTable({
                           {Math.abs(item.comparison.changePercent).toFixed(1)}%
                         </span>
                       ) : (
-                        <span className="text-gray-500">-</span>
+                        <span className="text-[var(--color-text-muted)]">-</span>
                       )}
                     </td>
                   </tr>
@@ -219,14 +219,14 @@ export default function DataTable({
           {/* Summary row - shows total of ALL data, not just current page */}
           {data.length > 0 && (
             <tfoot>
-              <tr className="bg-gray-700/50 border-t-2 border-gray-600 font-bold">
+              <tr className="bg-[var(--color-elevated)] border-t-2 border-[var(--color-border)] font-bold">
                 <td className="px-3 py-3 text-white">TỔNG CỘNG</td>
-                <td className="px-3 py-3 text-right text-green-400">
+                <td className="px-3 py-3 text-right text-[var(--color-success)]">
                   {data
                     .reduce((acc, d) => acc + d.xe.ha + d.xalan.ha, 0)
                     .toLocaleString("vi-VN")}
                 </td>
-                <td className="px-3 py-3 text-right text-red-400">
+                <td className="px-3 py-3 text-right text-[var(--color-danger)]">
                   {data
                     .reduce((acc, d) => acc + d.xe.giao + d.xalan.giao, 0)
                     .toLocaleString("vi-VN")}
@@ -255,7 +255,7 @@ export default function DataTable({
                     .reduce((acc, d) => acc + d.xe.total + d.xalan.total, 0)
                     .toLocaleString("vi-VN")}
                 </td>
-                <td className="px-3 py-3 text-right text-gray-500">-</td>
+                <td className="px-3 py-3 text-right text-[var(--color-text-muted)]">-</td>
               </tr>
             </tfoot>
           )}
@@ -264,8 +264,8 @@ export default function DataTable({
 
       {/* Footer with Pagination */}
       {data.length > 0 && (
-        <div className="px-4 py-3 bg-gray-700/30 flex flex-col sm:flex-row justify-between items-center gap-3">
-          <span className="text-sm text-gray-400">
+        <div className="px-4 py-3 bg-[var(--color-elevated)] flex flex-col sm:flex-row justify-between items-center gap-3">
+          <span className="text-sm text-[var(--color-text-secondary)]">
             Trang {currentPage}/{totalPages} | Tổng {data.length} dòng
           </span>
 
@@ -276,9 +276,9 @@ export default function DataTable({
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1.5 rounded bg-gray-700 text-white text-sm
+                className="px-3 py-1.5 rounded bg-[var(--color-elevated)] text-white text-sm
                                          disabled:opacity-50 disabled:cursor-not-allowed
-                                         hover:bg-gray-600 transition-colors"
+                                         hover:bg-[var(--color-elevated)] transition-colors"
               >
                 ‹
               </button>
@@ -292,8 +292,8 @@ export default function DataTable({
                     className={`px-3 py-1.5 rounded text-sm font-medium transition-colors
                                               ${
                                                 currentPage === page
-                                                  ? "bg-blue-600 text-white"
-                                                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                                  ? "bg-[var(--color-accent)] text-white"
+                                                  : "bg-[var(--color-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-elevated)]"
                                               }`}
                   >
                     {page}
@@ -307,9 +307,9 @@ export default function DataTable({
                   setCurrentPage((p) => Math.min(totalPages, p + 1))
                 }
                 disabled={currentPage === totalPages}
-                className="px-3 py-1.5 rounded bg-gray-700 text-white text-sm
+                className="px-3 py-1.5 rounded bg-[var(--color-elevated)] text-white text-sm
                                          disabled:opacity-50 disabled:cursor-not-allowed
-                                         hover:bg-gray-600 transition-colors"
+                                         hover:bg-[var(--color-elevated)] transition-colors"
               >
                 ›
               </button>
