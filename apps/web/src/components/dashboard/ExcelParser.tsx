@@ -251,10 +251,10 @@ function parseNgayThang(sheet: XLSX.WorkSheet): DashboardData[] {
         const xeTotal = xeHa + xeGiao + xeFullCfs;
 
         // === ĐỌC CHI TIẾT XALAN ===
-        // Debug output: AA(26)=10(Tổng Hạ), AE(30)=33(Tổng Giao), AH(33)=0(CFS)
-        const xalanHa = getValue(r, 26);     // Cột AA: Tổng Hạ XALAN = 10
-        const xalanGiao = getValue(r, 30);   // Cột AE: Tổng Giao XALAN = 33
-        const xalanFullCfs = getValue(r, 33); // Cột AH: Tổng F CFS XALAN = 0
+        // XALAN: HB(Z=25), TR(AA=26), Tổng Hạ(AB=27), LN(AC=28), CR(AD=29), Tổng Giao(AE=30), ĐH(AF=31), RR(AG=32), Tổng F CFS(AH=33)
+        const xalanHa = getValue(r, 27);     // Cột AB: Tổng Hạ XALAN
+        const xalanGiao = getValue(r, 30);   // Cột AE: Tổng Giao XALAN
+        const xalanFullCfs = getValue(r, 33); // Cột AH: Tổng F CFS XALAN
         const xalanTotal = xalanHa + xalanGiao + xalanFullCfs;
 
         // Tổng biến động = XE + XALAN
@@ -329,6 +329,35 @@ function parseNgayThang(sheet: XLSX.WorkSheet): DashboardData[] {
     return data;
 }
 
+/**
+ * Thử parse tất cả sheet trong workbook, trả về sheet đầu tiên thành công.
+ * Nếu tất cả đều fail, ném lỗi chi tiết theo từng sheet.
+ */
+function tryParseSheets(
+    workbook: XLSX.WorkBook,
+    parser: (sheet: XLSX.WorkSheet) => DashboardData[],
+    formatName: string
+): { data: DashboardData[]; sheetName: string } {
+    if (workbook.SheetNames.length === 0) {
+        throw new Error('File không có sheet nào.');
+    }
+
+    const sheetErrors: string[] = [];
+    for (const sheetName of workbook.SheetNames) {
+        try {
+            const data = parser(workbook.Sheets[sheetName]);
+            return { data, sheetName };
+        } catch (e) {
+            sheetErrors.push(`"${sheetName}": ${e instanceof Error ? e.message : String(e)}`);
+        }
+    }
+
+    const detail = sheetErrors.join(' | ');
+    throw new Error(
+        `Không tìm thấy sheet đúng định dạng "${formatName}" (${workbook.SheetNames.length} sheet đã kiểm tra). ${detail}`
+    );
+}
+
 // Save to localStorage
 export function saveToStorage(data: DashboardData[], dataType: DataType) {
     const key = dataType === 'daily' ? STORAGE_KEY_DAILY : STORAGE_KEY_MONTHLY;
@@ -369,77 +398,65 @@ export default function ExcelParser({ onDataLoaded, onClearData }: ExcelParserPr
                 const file = files[i];
                 const buffer = await file.arrayBuffer();
                 const workbook = XLSX.read(buffer, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const sheet = workbook.Sheets[sheetName];
 
                 let data: DashboardData[] = [];
                 let dataType: DataType = 'monthly';
+                let usedSheetName = workbook.SheetNames[0] ?? '';
 
-                // Detect file type by name or sheet name
+                // Detect intent from filename or any sheet name in the workbook
                 const fileNameLower = file.name.toLowerCase();
-                const sheetNameLower = sheetName.toLowerCase();
+                const anySheetLower = workbook.SheetNames.map(n => n.toLowerCase());
+                const looksDaily = fileNameLower.includes('ngay') || fileNameLower.includes('ngày') ||
+                    anySheetLower.some(n => n.includes('bcn') || n.includes('gate') || n.includes('ngay'));
+                const looksMonthly = fileNameLower.includes('luy') || fileNameLower.includes('lũy') ||
+                    anySheetLower.some(n => n.includes('luy') || n.includes('tien'));
 
-                if (fileNameLower.includes('ngay') || fileNameLower.includes('ngày') ||
-                    sheetNameLower.includes('bcn') || sheetNameLower.includes('ngay')) {
-                    try {
-                        data = parseNgayThang(sheet);
-                        dataType = 'daily';
-                    } catch (e: unknown) {
-                        const message = e instanceof Error ? e.message : String(e);
-                        throw new Error(`Lỗi file ngày: ${message}`);
-                    }
-                } else if (fileNameLower.includes('luy') || fileNameLower.includes('lũy') ||
-                    sheetNameLower.includes('luy') || sheetNameLower.includes('tien')) {
-                    try {
-                        data = parseLuyTien(sheet);
-                        dataType = 'monthly';
-                    } catch (e: unknown) {
-                        const message = e instanceof Error ? e.message : String(e);
-                        throw new Error(`Lỗi file lũy tiến: ${message}`);
-                    }
+                if (looksDaily) {
+                    const result = tryParseSheets(workbook, parseNgayThang, 'Số liệu ngày');
+                    data = result.data;
+                    usedSheetName = result.sheetName;
+                    dataType = 'daily';
+                } else if (looksMonthly) {
+                    const result = tryParseSheets(workbook, parseLuyTien, 'Số liệu lũy tiến');
+                    data = result.data;
+                    usedSheetName = result.sheetName;
+                    dataType = 'monthly';
                 } else {
-                    // Auto-detect: try daily first
+                    // Auto-detect: thử daily trước, nếu fail hoặc rỗng thì thử monthly
+                    let dailyResult: { data: DashboardData[]; sheetName: string } | null = null;
                     try {
-                        const dailyData = parseNgayThang(sheet);
-                        if (dailyData.length > 0 && dailyData.some(d => d.xe.total > 0 || d.xalan.total > 0)) {
-                            data = dailyData;
-                            dataType = 'daily';
-                        } else {
-                            // If daily parsing worked but returned no meaningful data, try monthly
-                            data = parseLuyTien(sheet);
-                            dataType = 'monthly';
-                        }
-                    } catch (_dailyErr) {
-                        // If daily failed, try monthly
-                        try {
-                            data = parseLuyTien(sheet);
-                            dataType = 'monthly';
-                        } catch (_monthlyErr) {
-                            throw new Error('Không nhận diện được cấu trúc file. Vui lòng kiểm tra lại.');
-                        }
+                        dailyResult = tryParseSheets(workbook, parseNgayThang, 'Số liệu ngày');
+                    } catch { /* fall through to monthly */ }
+
+                    if (dailyResult && dailyResult.data.some(d => d.xe.total > 0 || d.xalan.total > 0)) {
+                        data = dailyResult.data;
+                        usedSheetName = dailyResult.sheetName;
+                        dataType = 'daily';
+                    } else {
+                        const result = tryParseSheets(workbook, parseLuyTien, 'Số liệu lũy tiến');
+                        data = result.data;
+                        usedSheetName = result.sheetName;
+                        dataType = 'monthly';
                     }
                 }
 
                 if (data.length > 0) {
-                    // Save to localStorage (fallback)
                     saveToStorage(data, dataType);
 
-                    // Save to IndexedDB
                     try {
-                        const result = await importExcelToDb(data, dataType, sheetName, file.name);
+                        const result = await importExcelToDb(data, dataType, usedSheetName, file.name);
                         logger.info('Imported Excel data into IndexedDB', result);
                     } catch (dbError) {
                         console.warn('[IndexedDB] Fallback to localStorage:', dbError);
                     }
 
                     onDataLoaded(data, dataType);
-                    setLoadedFiles(prev => ({
-                        ...prev,
-                        [dataType]: true
-                    }));
+                    setLoadedFiles(prev => ({ ...prev, [dataType]: true }));
                     logger.info('Loaded Excel records', {
                         count: data.length,
                         dataType,
+                        sheetUsed: usedSheetName,
+                        totalSheets: workbook.SheetNames.length,
                         sample: data.slice(0, 3),
                     });
                 }
@@ -518,6 +535,7 @@ export default function ExcelParser({ onDataLoaded, onClearData }: ExcelParserPr
 
             {/* Clear Data button */}
             <button
+                type="button"
                 onClick={() => {
                     handleClear('daily');
                     handleClear('monthly');
